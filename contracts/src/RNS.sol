@@ -16,7 +16,7 @@ contract RNS {
     // name hash => whether name is taken
     mapping(bytes32 => bool) private isRegistered;
 
-    uint256 public constant REGISTRATION_FEE = 0.01 ether;
+    uint256 public constant REGISTRATION_FEE = 0.001 ether;
     uint256 public constant MIN_NAME_LENGTH = 3;
     uint256 public constant MAX_NAME_LENGTH = 32;
 
