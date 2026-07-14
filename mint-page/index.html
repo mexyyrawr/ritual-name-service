@@ -413,8 +413,21 @@
 
     async function doRegister() {
       if (!account || !currentName) return;
-      await syncChain(); if (currentChainId !== CHAIN_ID) { forceRitualSwitch(); return; }
-      const btn = document.getElementById("regBtn"); btn.disabled = true; btn.textContent = "Confirming...";
+      await syncChain();
+
+      const btn = document.getElementById("regBtn");
+      btn.disabled = true; btn.textContent = "Preparing...";
+
+      // ALWAYS ensure RPC first — shows MetaMask popup if needed, WAITS for user to confirm
+      await ensureRitualRPC();
+      await syncChain();
+
+      if (currentChainId !== CHAIN_ID) {
+        btn.disabled = false; btn.textContent = "Register " + currentName + ".ritual (0.001 RITUAL)";
+        return;
+      }
+
+      btn.textContent = "Confirming...";
       try {
         const strPart = encStr(currentName); const addrPadded = account.slice(2).toLowerCase().padStart(64, "0");
         const data = "0x1e59c529" + "0000000000000000000000000000000000000000000000000000000000000040" + addrPadded + strPart;
@@ -485,15 +498,23 @@
 
     async function doSend() {
       if (!sendResolvedAddr || !account) return;
-      await syncChain();
-      if (currentChainId !== CHAIN_ID) { forceRitualSwitch(); return; }
-
-      const amount = document.getElementById("amountInput").value;
-      if (!amount || parseFloat(amount) <= 0) { alert("Enter an amount!"); return; }
 
       const btn = document.getElementById("sendBtn");
-      btn.disabled = true; btn.textContent = "Sending...";
+      btn.disabled = true; btn.textContent = "Preparing...";
 
+      // Ensure RPC first
+      await ensureRitualRPC();
+      await syncChain();
+
+      if (currentChainId !== CHAIN_ID) {
+        btn.disabled = false; btn.textContent = "Send RITUAL";
+        return;
+      }
+
+      const amount = document.getElementById("amountInput").value;
+      if (!amount || parseFloat(amount) <= 0) { alert("Enter an amount!"); btn.disabled = false; btn.textContent = "Send RITUAL"; return; }
+
+      btn.textContent = "Sending...";
       try {
         const valueHex = "0x" + BigInt(Math.floor(parseFloat(amount) * 1e18)).toString(16);
         const txHash = await window.ethereum.request({
@@ -502,14 +523,14 @@
         });
         btn.className = "btn btn-outline";
         btn.textContent = "✓ Sent! TX: " + txHash.slice(0, 10) + "...";
-        setTimeout(() => {
-          btn.textContent = "Send RITUAL";
-          btn.className = "btn btn-green"; btn.disabled = false;
-        }, 5000);
+        setTimeout(() => { btn.textContent = "Send RITUAL"; btn.className = "btn btn-green"; btn.disabled = false; }, 5000);
       } catch (e) {
-        btn.className = "btn btn-green"; btn.disabled = false;
-        btn.textContent = "Send RITUAL";
-        alert("Failed: " + e.message);
+        btn.className = "btn btn-green"; btn.disabled = false; btn.textContent = "Send RITUAL";
+        if (e.message && e.message.includes("RPC")) {
+          alert("RPC Error! Fix in MetaMask:\n\n1. Open MetaMask → Settings → Networks\n2. Find 'Ritual Testnet' (Chain 1979)\n3. Edit RPC URL to: https://rpc.ritualfoundation.org\n4. Save and try again");
+        } else {
+          alert("Failed: " + e.message);
+        }
       }
     }
 
