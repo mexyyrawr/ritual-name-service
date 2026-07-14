@@ -67,7 +67,64 @@
       border: 1px solid #1a4a35; border-radius: 8px;
       margin-bottom: 12px; display: none;
     }
-    /* Share card */
+    /* Name card (shown after registration) */
+    .name-card-overlay {
+      display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.7); z-index: 100;
+      align-items: center; justify-content: center;
+    }
+    .name-card-overlay.show { display: flex; }
+    .name-card {
+      width: 420px; background: linear-gradient(135deg, #0a1a14 0%, #0a2e1a 50%, #0a1a14 100%);
+      border: 2px solid #2dd47a; border-radius: 20px; padding: 32px;
+      text-align: center; position: relative; overflow: hidden;
+    }
+    .name-card::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+      background-image: linear-gradient(rgba(45,212,122,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(45,212,122,0.03) 1px, transparent 1px);
+      background-size: 24px 24px;
+    }
+    .name-card .nc-logo { width: 48px; height: 48px; border-radius: 12px; margin-bottom: 12px; position: relative; }
+    .name-card .nc-badge {
+      display: inline-block; padding: 4px 12px; border-radius: 16px;
+      background: rgba(45,212,122,0.1); border: 1px solid rgba(45,212,122,0.3);
+      color: #2dd47a; font-size: 12px; font-weight: 600;
+      margin-bottom: 16px; position: relative;
+    }
+    .name-card .nc-name {
+      font-size: 36px; font-weight: 800; color: #fff;
+      margin-bottom: 4px; position: relative;
+    }
+    .name-card .nc-name .green {
+      background: linear-gradient(135deg, #2dd47a, #4ade80);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .name-card .nc-address {
+      font-family: monospace; font-size: 12px; color: #3d6b52;
+      margin-bottom: 16px; position: relative;
+    }
+    .name-card .nc-chain {
+      font-size: 11px; color: rgba(45,212,122,0.4); letter-spacing: 1px;
+      position: relative;
+    }
+    .name-card .nc-close {
+      position: absolute; top: 12px; right: 16px;
+      background: none; border: none; color: #3d6b52;
+      font-size: 20px; cursor: pointer; z-index: 10;
+    }
+    .name-card .nc-close:hover { color: #fff; }
+    .nc-actions {
+      display: flex; gap: 10px; margin-top: 16px; position: relative;
+    }
+    .nc-actions button, .nc-actions a {
+      flex: 1; padding: 10px; border-radius: 8px; font-size: 13px;
+      font-weight: 600; cursor: pointer; border: none; text-align: center;
+      text-decoration: none; display: block;
+    }
+    .nc-actions .nc-x { background: #1d9bf0; color: #fff; }
+    .nc-actions .nc-x:hover { background: #1a8cd8; }
+    .nc-actions .nc-close-btn { background: #0f2a1f; color: #6b9e84; border: 1px solid #1a4a35; }
     .share-section { text-align: center; margin-top: 24px; padding-top: 24px; border-top: 1px solid #1a4a35; }
     .share-section p { color: #6b9e84; font-size: 13px; margin-bottom: 12px; }
     .share-btn {
@@ -135,6 +192,22 @@
       </a>
     </div>
 
+    <!-- NAME CARD OVERLAY (shown after registration) -->
+    <div class="name-card-overlay" id="nameCardOverlay">
+      <div class="name-card" id="nameCard">
+        <button class="nc-close" onclick="closeNameCard()">✕</button>
+        <img class="nc-logo" src="https://pbs.twimg.com/profile_images/2047761933764268032/ltdZOulq_400x400.jpg" alt="Ritual" />
+        <div class="nc-badge">🟢 Registered on Ritual</div>
+        <div class="nc-name" id="ncName"></div>
+        <div class="nc-address" id="ncAddress"></div>
+        <div class="nc-chain">RITUAL CHAIN · 1979</div>
+        <div class="nc-actions">
+          <a class="nc-x" id="ncShareX" href="#" target="_blank">Share on X</a>
+          <button class="nc-close-btn" onclick="closeNameCard()">Close</button>
+        </div>
+      </div>
+    </div>
+
     <div class="footer">
       <p>Built on <a href="https://explorer.ritualfoundation.org/address/0x0748176b3F44453c6E871012D41e10272abD60bC" target="_blank">Ritual Chain</a> (1979)</p>
     </div>
@@ -153,6 +226,19 @@
     let currentName = "";
     let isSwitching = false;
     let sendResolvedAddr = null;
+
+    // ============ NAME CARD ============
+    function showNameCard(name, addr) {
+      document.getElementById("ncName").innerHTML = '<span class="green">' + name + '</span>.ritual';
+      document.getElementById("ncAddress").textContent = addr;
+      const tweetText = encodeURIComponent("just registered " + name + ".ritual on @ritualnet 🟢\n\nsend me $RITUAL by name: " + name + ".ritual\n\nhttps://ritual-name-service.vercel.app");
+      document.getElementById("ncShareX").href = "https://x.com/intent/post?text=" + tweetText;
+      document.getElementById("nameCardOverlay").classList.add("show");
+    }
+
+    function closeNameCard() {
+      document.getElementById("nameCardOverlay").classList.remove("show");
+    }
 
     // ============ SHARE ============
     function updateShareLink() {
@@ -288,8 +374,8 @@
         const data = "0x1e59c529" + "0000000000000000000000000000000000000000000000000000000000000040" + addrPadded + strPart;
         const txHash = await window.ethereum.request({ method: "eth_sendTransaction", params: [{ from: account, to: CONTRACT, value: FEE, data, gas: "0x493E0" }] });
         btn.className = "btn btn-outline"; btn.textContent = "✓ Registered! TX: " + txHash.slice(0, 10) + "...";
-        // Update share text
-        updateShareLink();
+        // Show name card
+        showNameCard(currentName, account);
         setTimeout(() => checkName(currentName), 3000);
       } catch (e) { btn.className = "btn btn-green"; btn.disabled = false; btn.textContent = "Register " + currentName + ".ritual (0.001 RITUAL)"; alert("Failed: " + e.message); }
     }
