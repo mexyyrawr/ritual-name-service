@@ -106,6 +106,27 @@
       text-align: center; font-size: 12px; color: #3d6b52;
       margin-bottom: 16px;
     }
+
+    /* Network warning banner */
+    .network-banner {
+      display: none;
+      background: #2e1a0a;
+      border: 1px solid #996b1b;
+      border-radius: 10px;
+      padding: 14px;
+      margin-bottom: 16px;
+      text-align: center;
+    }
+    .network-banner .net-text { color: #fbbf24; font-size: 14px; margin-bottom: 10px; }
+    .network-banner .net-text strong { color: #fde68a; }
+    .network-banner button {
+      padding: 10px 20px;
+      background: #f59e0b; color: #0a1a14;
+      border: none; border-radius: 8px;
+      font-size: 13px; font-weight: 700;
+      cursor: pointer; width: 100%;
+    }
+    .network-banner button:hover { background: #d97706; }
   </style>
 </head>
 <body>
@@ -117,6 +138,11 @@
     </div>
 
     <button class="connect-btn" id="connectBtn" onclick="connect()">Connect MetaMask</button>
+
+    <div class="network-banner" id="networkBanner">
+      <div class="net-text">⚠️ Wrong network. Switch to <strong>Ritual Testnet</strong></div>
+      <button onclick="switchToRitual()">Switch to Ritual</button>
+    </div>
 
     <div class="card">
       <div class="input-row">
@@ -141,7 +167,49 @@
     const FEE = "0x38D7EA4C68000"; // 0.001 ETH in hex
 
     let account = null;
+    let currentChainId = null;
     let currentName = "";
+
+    // Check if on correct network
+    function checkNetwork() {
+      const banner = document.getElementById("networkBanner");
+      if (account && currentChainId && currentChainId !== CHAIN_ID) {
+        banner.style.display = "block";
+      } else {
+        banner.style.display = "none";
+      }
+    }
+
+    // Switch to Ritual network
+    async function switchToRitual() {
+      if (!window.ethereum) return;
+      try {
+        await window.ethereum.request({ method: "wallet_switchEthereumChain", params: [{ chainId: "0x787" }] });
+      } catch {
+        await window.ethereum.request({
+          method: "wallet_addEthereumChain",
+          params: [{ chainId: "0x787", chainName: "Ritual", nativeCurrency: { name: "RITUAL", symbol: "RITUAL", decimals: 18 }, rpcUrls: [RPC], blockExplorerUrls: ["https://explorer.ritualfoundation.org"] }]
+        });
+      }
+    }
+
+    // Listen for chain changes
+    if (window.ethereum) {
+      window.ethereum.on("chainChanged", (chainId) => {
+        currentChainId = parseInt(chainId, 16);
+        checkNetwork();
+        if (currentName.length >= 3) checkName(currentName);
+      });
+      window.ethereum.on("accountsChanged", (accs) => {
+        if (accs.length === 0) {
+          disconnect();
+        } else {
+          account = accs[0];
+          updateConnectBtn();
+          if (currentName.length >= 3) checkName(currentName);
+        }
+      });
+    }
 
     function strToHex(s) {
       let h = "";
@@ -180,16 +248,14 @@
         account = accs[0];
 
         const cid = await window.ethereum.request({ method: "eth_chainId" });
-        if (parseInt(cid, 16) !== CHAIN_ID) {
-          try {
-            await window.ethereum.request({ method: "wallet_switchEthereumChain", params: [{ chainId: "0x787" }] });
-          } catch {
-            await window.ethereum.request({
-              method: "wallet_addEthereumChain",
-              params: [{ chainId: "0x787", chainName: "Ritual", nativeCurrency: { name: "RITUAL", symbol: "RITUAL", decimals: 18 }, rpcUrls: [RPC], blockExplorerUrls: ["https://explorer.ritualfoundation.org"] }]
-            });
-          }
+        currentChainId = parseInt(cid, 16);
+        if (currentChainId !== CHAIN_ID) {
+          await switchToRitual();
+          // Re-read chain after switch attempt
+          const newCid = await window.ethereum.request({ method: "eth_chainId" });
+          currentChainId = parseInt(newCid, 16);
         }
+        checkNetwork();
 
         updateConnectBtn();
         if (currentName.length >= 3) checkName(currentName);
@@ -200,9 +266,11 @@
 
     function disconnect() {
       account = null;
+      currentChainId = null;
       document.getElementById("connectBtn").textContent = "Connect MetaMask";
       document.getElementById("connectBtn").classList.remove("connected");
       document.getElementById("connectBtn").onclick = connect;
+      document.getElementById("networkBanner").style.display = "none";
       if (currentName.length >= 3) checkName(currentName);
     }
 
@@ -277,6 +345,10 @@
 
     async function doRegister() {
       if (!account || !currentName) return;
+      if (currentChainId !== CHAIN_ID) {
+        await switchToRitual();
+        return;
+      }
 
       const btn = document.getElementById("actionBtn");
       btn.disabled = true;
