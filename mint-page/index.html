@@ -112,14 +112,28 @@
           }
         }
 
-        document.getElementById("connectBtn").textContent = account.slice(0, 6) + "..." + account.slice(-4);
-        document.getElementById("connectBtn").classList.add("connected");
+        updateConnectBtn();
 
         // Re-check if name was already typed
         if (currentName.length >= 3) checkName(currentName);
       } catch (e) {
         alert("Connect failed: " + e.message);
       }
+    }
+
+    function disconnect() {
+      account = null;
+      document.getElementById("connectBtn").textContent = "Connect MetaMask";
+      document.getElementById("connectBtn").classList.remove("connected");
+      document.getElementById("connectBtn").onclick = connect;
+      if (currentName.length >= 3) checkName(currentName);
+    }
+
+    function updateConnectBtn() {
+      const btn = document.getElementById("connectBtn");
+      btn.textContent = account.slice(0, 6) + "..." + account.slice(-4) + " ✕";
+      btn.classList.add("connected");
+      btn.onclick = disconnect;
     }
 
     // On input
