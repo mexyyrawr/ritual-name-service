@@ -5,6 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>RNS — Ritual Name Service</title>
   <link rel="icon" href="https://pbs.twimg.com/profile_images/2047761933764268032/ltdZOulq_400x400.jpg" />
+  <meta name="description" content="Register .ritual names and send RITUAL by name on Ritual Chain" />
+  <meta property="og:title" content="Ritual Name Service" />
+  <meta property="og:description" content="Register your .ritual name and send RITUAL by name" />
+  <meta property="og:image" content="https://pbs.twimg.com/profile_images/2047761933764268032/ltdZOulq_400x400.jpg" />
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { background: #0a1a14; color: #c8e6d8; font-family: system-ui, -apple-system, sans-serif; min-height: 100vh; }
@@ -19,7 +23,10 @@
     .input-row input { flex: 1; padding: 14px 16px; background: transparent; border: none; color: #fff; font-size: 16px; outline: none; }
     .input-row input::placeholder { color: #3d6b52; }
     .input-row .suffix { padding-right: 16px; color: #2dd47a; font-weight: 700; font-size: 15px; white-space: nowrap; }
-    #status { padding: 14px; border-radius: 10px; font-size: 14px; display: none; margin-bottom: 12px; }
+    .input-row input[type="number"] { -moz-appearance: textfield; }
+    .input-row input[type="number"]::-webkit-inner-spin-button,
+    .input-row input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; }
+    #sendStatus { padding: 14px; border-radius: 10px; font-size: 14px; display: none; margin-bottom: 12px; }
     .ok { display: block; background: #0a2e1a; color: #4ade80; border: 1px solid #166534; }
     .err { display: block; background: #2e0a0a; color: #f87171; border: 1px solid #991b1b; }
     .wait { display: block; background: #0f2a1f; color: #2dd47a; border: 1px solid #1a4a35; }
@@ -40,6 +47,37 @@
     .footer a { color: #2dd47a; text-decoration: none; }
     .footer a:hover { text-decoration: underline; }
     .card[disabled] { opacity: 0.3; pointer-events: none; }
+    /* Tabs */
+    .tabs { display: flex; gap: 0; margin-bottom: 20px; }
+    .tab {
+      flex: 1; padding: 12px; text-align: center;
+      background: #0f2a1f; border: 1px solid #1a4a35;
+      color: #6b9e84; font-size: 14px; font-weight: 600;
+      cursor: pointer; transition: all .2s;
+    }
+    .tab:first-child { border-radius: 10px 0 0 10px; }
+    .tab:last-child { border-radius: 0 10px 10px 0; }
+    .tab.active { background: #2dd47a; color: #0a1a14; border-color: #2dd47a; }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+    /* Resolved address in send */
+    .resolved-addr {
+      font-family: monospace; font-size: 12px; color: #4ade80;
+      word-break: break-all; padding: 10px; background: #0a1a14;
+      border: 1px solid #1a4a35; border-radius: 8px;
+      margin-bottom: 12px; display: none;
+    }
+    /* Share card */
+    .share-section { text-align: center; margin-top: 24px; padding-top: 24px; border-top: 1px solid #1a4a35; }
+    .share-section p { color: #6b9e84; font-size: 13px; margin-bottom: 12px; }
+    .share-btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 10px 24px; background: #1d9bf0; color: #fff;
+      border: none; border-radius: 8px; font-size: 14px; font-weight: 600;
+      cursor: pointer; text-decoration: none;
+    }
+    .share-btn:hover { background: #1a8cd8; }
+    .share-btn svg { width: 18px; height: 18px; fill: #fff; }
   </style>
 </head>
 <body>
@@ -47,20 +85,54 @@
     <div class="header">
       <img class="logo" src="https://pbs.twimg.com/profile_images/2047761933764268032/ltdZOulq_400x400.jpg" alt="Ritual" />
       <h1>Ritual Name Service</h1>
-      <p>Register a .ritual name for your wallet</p>
+      <p>Register & send RITUAL by name</p>
     </div>
 
     <button class="connect-btn" id="connectBtn" onclick="doConnect()">Connect MetaMask</button>
 
-    <div class="card" id="mainCard">
-      <div class="input-row">
-        <input type="text" id="nameInput" placeholder="Type a name..." oninput="onInput()" autocomplete="off" spellcheck="false" />
-        <span class="suffix">.ritual</span>
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab('register')">📝 Register</div>
+      <div class="tab" onclick="switchTab('send')">💸 Send by Name</div>
+    </div>
+
+    <!-- REGISTER TAB -->
+    <div class="tab-panel active" id="panel-register">
+      <div class="card" id="registerCard">
+        <div class="input-row">
+          <input type="text" id="nameInput" placeholder="Type a name..." oninput="onRegisterInput()" autocomplete="off" spellcheck="false" />
+          <span class="suffix">.ritual</span>
+        </div>
+        <div id="regStatus"></div>
+        <div id="ownerInfo"></div>
+        <div class="fee-label">Registration fee: 0.001 RITUAL</div>
+        <button class="btn btn-green" id="regBtn" style="display:none;" onclick="doRegister()"></button>
       </div>
-      <div id="status"></div>
-      <div id="ownerInfo"></div>
-      <div class="fee-label">Registration fee: 0.001 RITUAL</div>
-      <button class="btn btn-green" id="actionBtn" style="display:none;" onclick="doRegister()"></button>
+    </div>
+
+    <!-- SEND TAB -->
+    <div class="tab-panel" id="panel-send">
+      <div class="card" id="sendCard">
+        <div class="input-row">
+          <input type="text" id="sendNameInput" placeholder="Recipient name..." oninput="onSendInput()" autocomplete="off" spellcheck="false" />
+          <span class="suffix">.ritual</span>
+        </div>
+        <div id="sendStatus"></div>
+        <div class="resolved-addr" id="resolvedAddr"></div>
+        <div class="input-row">
+          <input type="number" id="amountInput" placeholder="Amount (RITUAL)" step="0.001" min="0" />
+          <span class="suffix">RITUAL</span>
+        </div>
+        <button class="btn btn-green" id="sendBtn" style="display:none;" onclick="doSend()">Send</button>
+      </div>
+    </div>
+
+    <!-- SHARE SECTION -->
+    <div class="share-section">
+      <p>Share Ritual Name Service on X</p>
+      <a class="share-btn" id="shareBtn" href="#" target="_blank">
+        <svg viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+        Share on X
+      </a>
     </div>
 
     <div class="footer">
@@ -74,252 +146,243 @@
     const CHAIN_ID = 1979;
     const CHAIN_HEX = "0x787";
     const FEE = "0x38D7EA4C68000";
+    const RESOLVE_SELECTOR = "0x461a4478";
 
     let account = null;
     let currentChainId = null;
     let currentName = "";
     let isSwitching = false;
+    let sendResolvedAddr = null;
 
-    // ============ ALWAYS FRESH CHAIN CHECK ============
-    async function syncChain() {
-      try {
-        const cid = await window.ethereum.request({ method: "eth_chainId" });
-        currentChainId = parseInt(cid, 16);
-      } catch {}
+    // ============ SHARE ============
+    function updateShareLink() {
+      const text = encodeURIComponent("just registered my .ritual name on @ritualnet 🟢\n\nsend me $RITUAL by name instead of address\n\nhttps://ritual-name-service.vercel.app");
+      document.getElementById("shareBtn").href = "https://x.com/intent/post?text=" + text;
     }
 
-    // ============ FORCE META MASK SWITCH POPUP ============
+    // ============ TABS ============
+    function switchTab(tab) {
+      document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+      document.querySelectorAll(".tab-panel").forEach(p => p.classList.remove("active"));
+      if (tab === "register") {
+        document.querySelectorAll(".tab")[0].classList.add("active");
+        document.getElementById("panel-register").classList.add("active");
+      } else {
+        document.querySelectorAll(".tab")[1].classList.add("active");
+        document.getElementById("panel-send").classList.add("active");
+      }
+    }
+
+    // ============ CHAIN ============
+    async function syncChain() {
+      try { const cid = await window.ethereum.request({ method: "eth_chainId" }); currentChainId = parseInt(cid, 16); } catch {}
+    }
+
     async function forceRitualSwitch() {
       if (isSwitching) return;
       isSwitching = true;
-      
       const btn = document.getElementById("connectBtn");
-      btn.textContent = "Check MetaMask for switch...";
+      btn.textContent = "Check MetaMask...";
       btn.classList.add("waiting");
-
       try {
-        // This WILL show a MetaMask popup
-        await window.ethereum.request({
-          method: "wallet_switchEthereumChain",
-          params: [{ chainId: CHAIN_HEX }]
-        });
-        // Success
+        await window.ethereum.request({ method: "wallet_switchEthereumChain", params: [{ chainId: CHAIN_HEX }] });
         currentChainId = CHAIN_ID;
       } catch (e) {
         if (e.code === 4902 || e.code === -32603) {
-          // Chain not added — add it (also shows popup)
           try {
-            await window.ethereum.request({
-              method: "wallet_addEthereumChain",
-              params: [{
-                chainId: CHAIN_HEX,
-                chainName: "Ritual Testnet",
-                nativeCurrency: { name: "RITUAL", symbol: "RITUAL", decimals: 18 },
-                rpcUrls: ["https://rpc.ritualfoundation.org"],
-                blockExplorerUrls: ["https://explorer.ritualfoundation.org"]
-              }]
-            });
+            await window.ethereum.request({ method: "wallet_addEthereumChain", params: [{ chainId: CHAIN_HEX, chainName: "Ritual Testnet", nativeCurrency: { name: "RITUAL", symbol: "RITUAL", decimals: 18 }, rpcUrls: [RPC], blockExplorerUrls: ["https://explorer.ritualfoundation.org"] }] });
             currentChainId = CHAIN_ID;
           } catch {}
         }
-        // 4001 = user rejected, that's fine
       }
-
       isSwitching = false;
       await syncChain();
       updateUI();
     }
 
-    // ============ UI UPDATE ============
+    // ============ UI ============
     function updateUI() {
       const btn = document.getElementById("connectBtn");
-      const card = document.getElementById("mainCard");
-
+      const regCard = document.getElementById("registerCard");
+      const sendCard = document.getElementById("sendCard");
       if (!account) {
-        btn.textContent = "Connect MetaMask";
-        btn.classList.remove("connected", "waiting");
-        btn.onclick = doConnect;
-        btn.disabled = false;
-        return;
+        btn.textContent = "Connect MetaMask"; btn.classList.remove("connected", "waiting");
+        btn.onclick = doConnect; btn.disabled = false; return;
       }
-
-      btn.classList.remove("waiting");
-      btn.classList.add("connected");
+      btn.classList.remove("waiting"); btn.classList.add("connected");
       btn.textContent = account.slice(0, 6) + "..." + account.slice(-4) + " ✕";
-      btn.onclick = doDisconnect;
-      btn.disabled = false;
-
-      if (currentChainId !== CHAIN_ID) {
-        card.setAttribute("disabled", "");
-        card.style.opacity = "0.3";
-        card.style.pointerEvents = "none";
-      } else {
-        card.removeAttribute("disabled");
-        card.style.opacity = "1";
-        card.style.pointerEvents = "auto";
-      }
+      btn.onclick = doDisconnect; btn.disabled = false;
+      const isRitual = currentChainId === CHAIN_ID;
+      regCard.setAttribute("disabled", ""); regCard.style.opacity = isRitual ? "1" : "0.3"; regCard.style.pointerEvents = isRitual ? "auto" : "none";
+      sendCard.setAttribute("disabled", ""); sendCard.style.opacity = isRitual ? "1" : "0.3"; sendCard.style.pointerEvents = isRitual ? "auto" : "none";
     }
 
     // ============ CONNECT ============
     async function doConnect() {
       if (!window.ethereum) { alert("Install MetaMask!"); return; }
-      const btn = document.getElementById("connectBtn");
-      btn.textContent = "Connecting...";
-      btn.disabled = true;
-
+      const btn = document.getElementById("connectBtn"); btn.textContent = "Connecting..."; btn.disabled = true;
       try {
-        // 1) Show MetaMask account picker
-        await window.ethereum.request({
-          method: "wallet_requestPermissions",
-          params: [{ eth_accounts: {} }]
-        });
+        await window.ethereum.request({ method: "wallet_requestPermissions", params: [{ eth_accounts: {} }] });
         const accs = await window.ethereum.request({ method: "eth_requestAccounts" });
         if (!accs || accs.length === 0) throw new Error("No account");
         account = accs[0];
-
-        // 2) Get current chain
-        await syncChain();
-        updateUI();
-
-        // 3) If NOT on Ritual → auto-trigger MetaMask switch popup after 1s delay
-        if (currentChainId !== CHAIN_ID) {
-          setTimeout(() => forceRitualSwitch(), 1000);
-        }
-
+        await syncChain(); updateUI();
+        if (currentChainId !== CHAIN_ID) setTimeout(() => forceRitualSwitch(), 1000);
       } catch (e) {
-        console.error("[RNS] connect error:", e);
-        btn.textContent = "Connect MetaMask";
-        btn.classList.remove("connected", "waiting");
-        btn.disabled = false;
-        btn.onclick = doConnect;
+        btn.textContent = "Connect MetaMask"; btn.classList.remove("connected", "waiting"); btn.disabled = false; btn.onclick = doConnect;
       }
     }
 
-    function doDisconnect() {
-      account = null;
-      currentChainId = null;
-      updateUI();
-    }
+    function doDisconnect() { account = null; currentChainId = null; updateUI(); }
 
     // ============ LISTENERS ============
     if (window.ethereum) {
-      window.ethereum.on("chainChanged", (chainId) => {
-        currentChainId = parseInt(chainId, 16);
-        updateUI();
-        if (currentChainId === CHAIN_ID && currentName.length >= 3) checkName(currentName);
-      });
-      window.ethereum.on("accountsChanged", async (accs) => {
-        if (!accs || accs.length === 0) { doDisconnect(); return; }
-        account = accs[0];
-        await syncChain();
-        updateUI();
-        if (currentName.length >= 3) checkName(currentName);
-      });
+      window.ethereum.on("chainChanged", c => { currentChainId = parseInt(c, 16); updateUI(); });
+      window.ethereum.on("accountsChanged", async a => { if (!a || !a.length) { doDisconnect(); return; } account = a[0]; await syncChain(); updateUI(); });
     }
-
-    // Poll chain every 5s
-    setInterval(async () => {
-      if (account) { await syncChain(); updateUI(); }
-    }, 5000);
-
-    // Re-check on tab focus
-    document.addEventListener("visibilitychange", async () => {
-      if (!document.hidden && account) { await syncChain(); updateUI(); }
-    });
+    setInterval(async () => { if (account) { await syncChain(); updateUI(); } }, 5000);
+    document.addEventListener("visibilitychange", async () => { if (!document.hidden && account) { await syncChain(); updateUI(); } });
 
     // ============ HELPERS ============
     function strToHex(s) { let h = ""; for (let i = 0; i < s.length; i++) h += s.charCodeAt(i).toString(16).padStart(2, "0"); return h; }
-    function encStr(s) {
-      const hex = strToHex(s);
-      const len = s.length.toString(16).padStart(64, "0");
-      return len + hex.padEnd(Math.ceil(hex.length / 64) * 64, "0");
-    }
+    function encStr(s) { const hex = strToHex(s); const len = s.length.toString(16).padStart(64, "0"); return len + hex.padEnd(Math.ceil(hex.length / 64) * 64, "0"); }
     async function rpcCall(to, data) {
       const r = await fetch(RPC, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ jsonrpc: "2.0", id: Date.now(), method: "eth_call", params: [{ to, data }, "latest"] }) });
-      const j = await r.json();
-      if (j.error) throw new Error(j.error.message);
-      return j.result;
+      const j = await r.json(); if (j.error) throw new Error(j.error.message); return j.result;
     }
 
-    // ============ NAME CHECK ============
-    let timer;
-    function onInput() {
-      clearTimeout(timer);
+    // ============ REGISTER ============
+    let regTimer;
+    function onRegisterInput() {
+      clearTimeout(regTimer);
       const raw = document.getElementById("nameInput").value;
       currentName = raw.toLowerCase().replace(/[^a-z0-9_-]/g, "");
-      if (currentName.length < 3) {
-        document.getElementById("status").style.display = "none";
-        document.getElementById("ownerInfo").textContent = "";
-        document.getElementById("actionBtn").style.display = "none";
-        return;
-      }
-      timer = setTimeout(() => checkName(currentName), 300);
+      if (currentName.length < 3) { document.getElementById("regStatus").style.display = "none"; document.getElementById("ownerInfo").textContent = ""; document.getElementById("regBtn").style.display = "none"; return; }
+      regTimer = setTimeout(() => checkName(currentName), 300);
     }
 
     async function checkName(name) {
-      const status = document.getElementById("status");
-      const owner = document.getElementById("ownerInfo");
-      const btn = document.getElementById("actionBtn");
-      status.className = "wait"; status.textContent = "Checking " + name + ".ritual..."; status.style.display = "block";
-      owner.textContent = ""; btn.style.display = "none";
+      const status = document.getElementById("regStatus"); const owner = document.getElementById("ownerInfo"); const btn = document.getElementById("regBtn");
+      status.className = "wait"; status.textContent = "Checking " + name + ".ritual..."; status.style.display = "block"; owner.textContent = ""; btn.style.display = "none";
       try {
         const data = "0x965306aa" + "0000000000000000000000000000000000000000000000000000000000000020" + encStr(name);
         const result = await rpcCall(CONTRACT, data);
         const available = result && result.endsWith("1");
         if (available) {
           status.className = "ok"; status.textContent = "✓ " + name + ".ritual is available!";
-          if (account) {
-            btn.textContent = "Register " + name + ".ritual (0.001 RITUAL)";
-            btn.style.display = "block"; btn.disabled = false; btn.className = "btn btn-green";
-          } else {
-            btn.textContent = "Connect wallet to register";
-            btn.style.display = "block"; btn.disabled = true; btn.className = "btn btn-green";
-          }
+          if (account) { btn.textContent = "Register " + name + ".ritual (0.001 RITUAL)"; btn.style.display = "block"; btn.disabled = false; btn.className = "btn btn-green"; }
+          else { btn.textContent = "Connect wallet to register"; btn.style.display = "block"; btn.disabled = true; btn.className = "btn btn-green"; }
         } else {
           status.className = "err"; status.textContent = "✗ " + name + ".ritual is taken";
-          try {
-            const recData = "0x11dd8845" + "0000000000000000000000000000000000000000000000000000000000000020" + encStr(name);
-            const recResult = await rpcCall(CONTRACT, recData);
-            if (recResult && recResult.length >= 66) owner.textContent = "Owner: 0x" + recResult.slice(26, 66);
-          } catch {}
+          try { const recData = "0x11dd8845" + "0000000000000000000000000000000000000000000000000000000000000020" + encStr(name); const recResult = await rpcCall(CONTRACT, recData); if (recResult && recResult.length >= 66) owner.textContent = "Owner: 0x" + recResult.slice(26, 66); } catch {}
         }
       } catch (e) { status.className = "err"; status.textContent = "Error: " + e.message; }
     }
 
-    // ============ REGISTER ============
     async function doRegister() {
       if (!account || !currentName) return;
-      await syncChain();
-      if (currentChainId !== CHAIN_ID) { forceRitualSwitch(); return; }
-      const btn = document.getElementById("actionBtn");
-      btn.disabled = true; btn.textContent = "Confirming...";
+      await syncChain(); if (currentChainId !== CHAIN_ID) { forceRitualSwitch(); return; }
+      const btn = document.getElementById("regBtn"); btn.disabled = true; btn.textContent = "Confirming...";
       try {
-        const strPart = encStr(currentName);
-        const addrPadded = account.slice(2).toLowerCase().padStart(64, "0");
+        const strPart = encStr(currentName); const addrPadded = account.slice(2).toLowerCase().padStart(64, "0");
         const data = "0x1e59c529" + "0000000000000000000000000000000000000000000000000000000000000040" + addrPadded + strPart;
         const txHash = await window.ethereum.request({ method: "eth_sendTransaction", params: [{ from: account, to: CONTRACT, value: FEE, data, gas: "0x493E0" }] });
         btn.className = "btn btn-outline"; btn.textContent = "✓ Registered! TX: " + txHash.slice(0, 10) + "...";
+        // Update share text
+        updateShareLink();
         setTimeout(() => checkName(currentName), 3000);
+      } catch (e) { btn.className = "btn btn-green"; btn.disabled = false; btn.textContent = "Register " + currentName + ".ritual (0.001 RITUAL)"; alert("Failed: " + e.message); }
+    }
+
+    // ============ SEND ============
+    let sendTimer;
+    function onSendInput() {
+      clearTimeout(sendTimer);
+      const raw = document.getElementById("sendNameInput").value;
+      const name = raw.toLowerCase().replace(/[^a-z0-9_-]/g, "");
+      if (name.length < 3) {
+        document.getElementById("sendStatus").style.display = "none";
+        document.getElementById("resolvedAddr").style.display = "none";
+        document.getElementById("sendBtn").style.display = "none";
+        sendResolvedAddr = null;
+        return;
+      }
+      sendTimer = setTimeout(() => resolveSendName(name), 400);
+    }
+
+    async function resolveSendName(name) {
+      const status = document.getElementById("sendStatus");
+      const addrEl = document.getElementById("resolvedAddr");
+      const btn = document.getElementById("sendBtn");
+
+      status.className = "wait"; status.textContent = "Resolving " + name + ".ritual..."; status.style.display = "block";
+      addrEl.style.display = "none"; btn.style.display = "none"; sendResolvedAddr = null;
+
+      try {
+        const data = RESOLVE_SELECTOR + "0000000000000000000000000000000000000000000000000000000000000020" + encStr(name);
+        const result = await rpcCall(CONTRACT, data);
+
+        if (!result || result === "0x" + "0".repeat(64)) {
+          status.className = "err"; status.textContent = "✗ " + name + ".ritual not found";
+          return;
+        }
+
+        sendResolvedAddr = "0x" + result.slice(26);
+        status.className = "ok"; status.textContent = "✓ " + name + ".ritual";
+        addrEl.textContent = "→ " + sendResolvedAddr;
+        addrEl.style.display = "block";
+
+        if (account) {
+          btn.textContent = "Send RITUAL to " + name + ".ritual";
+          btn.style.display = "block"; btn.disabled = false; btn.className = "btn btn-green";
+        } else {
+          btn.textContent = "Connect wallet to send";
+          btn.style.display = "block"; btn.disabled = true; btn.className = "btn btn-green";
+        }
+      } catch (e) {
+        status.className = "err"; status.textContent = "Error: " + e.message;
+      }
+    }
+
+    async function doSend() {
+      if (!sendResolvedAddr || !account) return;
+      await syncChain();
+      if (currentChainId !== CHAIN_ID) { forceRitualSwitch(); return; }
+
+      const amount = document.getElementById("amountInput").value;
+      if (!amount || parseFloat(amount) <= 0) { alert("Enter an amount!"); return; }
+
+      const btn = document.getElementById("sendBtn");
+      btn.disabled = true; btn.textContent = "Sending...";
+
+      try {
+        const valueHex = "0x" + BigInt(Math.floor(parseFloat(amount) * 1e18)).toString(16);
+        const txHash = await window.ethereum.request({
+          method: "eth_sendTransaction",
+          params: [{ from: account, to: sendResolvedAddr, value: valueHex }]
+        });
+        btn.className = "btn btn-outline";
+        btn.textContent = "✓ Sent! TX: " + txHash.slice(0, 10) + "...";
+        setTimeout(() => {
+          btn.textContent = "Send RITUAL";
+          btn.className = "btn btn-green"; btn.disabled = false;
+        }, 5000);
       } catch (e) {
         btn.className = "btn btn-green"; btn.disabled = false;
-        btn.textContent = "Register " + currentName + ".ritual (0.001 RITUAL)";
+        btn.textContent = "Send RITUAL";
         alert("Failed: " + e.message);
       }
     }
 
     // ============ INIT ============
+    updateShareLink();
     (async () => {
       if (!window.ethereum) return;
       try {
         const accs = await window.ethereum.request({ method: "eth_accounts" });
         if (accs && accs.length > 0) {
-          account = accs[0];
-          await syncChain();
-          updateUI();
-          // Auto-switch if on wrong chain
-          if (currentChainId !== CHAIN_ID) {
-            setTimeout(() => forceRitualSwitch(), 1000);
-          }
+          account = accs[0]; await syncChain(); updateUI();
+          if (currentChainId !== CHAIN_ID) setTimeout(() => forceRitualSwitch(), 1000);
         }
       } catch {}
     })();
