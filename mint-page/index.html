@@ -264,19 +264,49 @@
       try { const cid = await window.ethereum.request({ method: "eth_chainId" }); currentChainId = parseInt(cid, 16); } catch {}
     }
 
+    // ============ ENSURE RITUAL RPC IS CONFIGURED ============
+    async function ensureRitualRPC() {
+      // Always add/update the chain — this ensures RPC URL is correct
+      // If chain already exists with correct RPC, it's a no-op
+      // If chain exists with wrong/missing RPC, it updates it
+      try {
+        await window.ethereum.request({
+          method: "wallet_addEthereumChain",
+          params: [{
+            chainId: CHAIN_HEX,
+            chainName: "Ritual Testnet",
+            nativeCurrency: { name: "RITUAL", symbol: "RITUAL", decimals: 18 },
+            rpcUrls: ["https://rpc.ritualfoundation.org"],
+            blockExplorerUrls: ["https://explorer.ritualfoundation.org"]
+          }]
+        });
+      } catch (e) {
+        // If user rejects or chain is already correct, that's fine
+        console.log("[RNS] ensureRitualRPC:", e.code || "ok");
+      }
+    }
+
     async function forceRitualSwitch() {
       if (isSwitching) return;
       isSwitching = true;
       const btn = document.getElementById("connectBtn");
       btn.textContent = "Check MetaMask...";
       btn.classList.add("waiting");
+
+      // First: always ensure RPC is configured
+      await ensureRitualRPC();
+
       try {
         await window.ethereum.request({ method: "wallet_switchEthereumChain", params: [{ chainId: CHAIN_HEX }] });
         currentChainId = CHAIN_ID;
       } catch (e) {
         if (e.code === 4902 || e.code === -32603) {
+          // Chain not added — add it (shouldn't happen after ensureRitualRPC but just in case)
           try {
-            await window.ethereum.request({ method: "wallet_addEthereumChain", params: [{ chainId: CHAIN_HEX, chainName: "Ritual Testnet", nativeCurrency: { name: "RITUAL", symbol: "RITUAL", decimals: 18 }, rpcUrls: [RPC], blockExplorerUrls: ["https://explorer.ritualfoundation.org"] }] });
+            await window.ethereum.request({
+              method: "wallet_addEthereumChain",
+              params: [{ chainId: CHAIN_HEX, chainName: "Ritual Testnet", nativeCurrency: { name: "RITUAL", symbol: "RITUAL", decimals: 18 }, rpcUrls: ["https://rpc.ritualfoundation.org"], blockExplorerUrls: ["https://explorer.ritualfoundation.org"] }]
+            });
             currentChainId = CHAIN_ID;
           } catch {}
         }
@@ -313,6 +343,8 @@
         if (!accs || accs.length === 0) throw new Error("No account");
         account = accs[0];
         await syncChain(); updateUI();
+        // Always ensure RPC is configured (fixes missing RPC error)
+        await ensureRitualRPC();
         if (currentChainId !== CHAIN_ID) setTimeout(() => forceRitualSwitch(), 1000);
       } catch (e) {
         btn.textContent = "Connect MetaMask"; btn.classList.remove("connected", "waiting"); btn.disabled = false; btn.onclick = doConnect;
@@ -468,6 +500,8 @@
         const accs = await window.ethereum.request({ method: "eth_accounts" });
         if (accs && accs.length > 0) {
           account = accs[0]; await syncChain(); updateUI();
+          // Always ensure RPC is configured
+          await ensureRitualRPC();
           if (currentChainId !== CHAIN_ID) setTimeout(() => forceRitualSwitch(), 1000);
         }
       } catch {}
