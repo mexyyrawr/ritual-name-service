@@ -30,12 +30,32 @@
     .btn-green:disabled { opacity: .4; cursor: not-allowed; }
     .btn-outline { background: transparent; color: #4ade80; border: 1px solid #166534; }
     .btn-outline:hover { background: #0a2e1a; }
-    .btn-switch { background: #f59e0b; color: #0a1a14; border: none; }
-    .btn-switch:hover { background: #d97706; }
-    .connect-btn { padding: 10px 20px; background: #2dd47a; color: #0a1a14; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; margin-bottom: 20px; display: block; width: 100%; transition: background .2s; }
+    .connect-btn { padding: 10px 20px; background: #2dd47a; color: #0a1a14; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; margin-bottom: 12px; display: block; width: 100%; transition: background .2s; }
     .connect-btn:hover { background: #22c06a; }
     .connect-btn.connected { background: #0f2a1f; border: 1px solid #1a4a35; color: #4ade80; }
     .connect-btn.connected:hover { background: #163d2b; }
+    /* Network warning — BLOCKING, cannot be dismissed */
+    .net-warn {
+      display: none;
+      background: #2e1a0a;
+      border: 2px solid #f59e0b;
+      border-radius: 10px;
+      padding: 16px;
+      margin-bottom: 16px;
+      text-align: center;
+    }
+    .net-warn .nw-icon { font-size: 28px; margin-bottom: 8px; }
+    .net-warn .nw-title { color: #fde68a; font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+    .net-warn .nw-sub { color: #fbbf24; font-size: 12px; margin-bottom: 12px; }
+    .net-warn button {
+      width: 100%; padding: 14px;
+      background: #f59e0b; color: #0a1a14;
+      border: none; border-radius: 10px;
+      font-size: 15px; font-weight: 700;
+      cursor: pointer;
+    }
+    .net-warn button:hover { background: #d97706; }
+    .net-warn button:disabled { opacity: .5; cursor: wait; }
     .footer { text-align: center; color: #2d5a42; font-size: 12px; margin-top: 32px; }
     .footer a { color: #2dd47a; text-decoration: none; }
     .footer a:hover { text-decoration: underline; }
@@ -50,9 +70,17 @@
       <p>Register a .ritual name for your wallet</p>
     </div>
 
-    <button class="connect-btn" id="connectBtn" onclick="connect()">Connect MetaMask</button>
+    <button class="connect-btn" id="connectBtn" onclick="doConnect()">Connect MetaMask</button>
 
-    <div class="card">
+    <!-- Network warning — ALWAYS visible when wrong chain, blocks interaction -->
+    <div class="net-warn" id="netWarn">
+      <div class="nw-icon">⚠️</div>
+      <div class="nw-title">Wrong Network</div>
+      <div class="nw-sub">Please switch to <strong>Ritual Testnet</strong> to continue</div>
+      <button id="switchBtn" onclick="doSwitch()">Switch to Ritual Testnet</button>
+    </div>
+
+    <div class="card" id="mainCard" style="display:none;">
       <div class="input-row">
         <input type="text" id="nameInput" placeholder="Type a name..." oninput="onInput()" autocomplete="off" spellcheck="false" />
         <span class="suffix">.ritual</span>
@@ -79,25 +107,79 @@
     let currentChainId = null;
     let currentName = "";
 
-    // ============ CHECK EXISTING CONNECTION ON LOAD ============
-    async function checkExistingConnection() {
-      if (!window.ethereum) return;
-      try {
-        const accs = await window.ethereum.request({ method: "eth_accounts" });
-        if (accs && accs.length > 0) {
-          account = accs[0];
-          const cid = await window.ethereum.request({ method: "eth_chainId" });
-          currentChainId = parseInt(cid, 16);
-          updateUI();
-          if (currentChainId !== CHAIN_ID) {
-            showNetworkWarning();
-          }
-        }
-      } catch {}
+    // ========== NETWORK ==========
+    async function getChainId() {
+      const cid = await window.ethereum.request({ method: "eth_chainId" });
+      return parseInt(cid, 16);
     }
 
-    // ============ CONNECT ============
-    async function connect() {
+    function updateNetUI() {
+      const warn = document.getElementById("netWarn");
+      const card = document.getElementById("mainCard");
+      if (account && currentChainId !== CHAIN_ID) {
+        warn.style.display = "block";
+        card.style.display = "none"; // HIDE card until on correct network
+      } else {
+        warn.style.display = "none";
+        if (account) card.style.display = "block";
+      }
+    }
+
+    // Switch network — called by button click
+    async function doSwitch() {
+      const btn = document.getElementById("switchBtn");
+      btn.textContent = "Switching...";
+      btn.disabled = true;
+
+      try {
+        console.log("[RNS] Attempting wallet_switchEthereumChain to 0x787...");
+        await window.ethereum.request({
+          method: "wallet_switchEthereumChain",
+          params: [{ chainId: CHAIN_HEX }]
+        });
+        console.log("[RNS] Switch SUCCESS");
+        currentChainId = CHAIN_ID;
+      } catch (e) {
+        console.log("[RNS] switchEthereumChain error:", e.code, e.message);
+        // Chain not added yet
+        if (e.code === 4902 || e.code === -32603) {
+          try {
+            console.log("[RNS] Chain not found, adding with wallet_addEthereumChain...");
+            await window.ethereum.request({
+              method: "wallet_addEthereumChain",
+              params: [{
+                chainId: CHAIN_HEX,
+                chainName: "Ritual Testnet",
+                nativeCurrency: { name: "RITUAL", symbol: "RITUAL", decimals: 18 },
+                rpcUrls: [RPC],
+                blockExplorerUrls: ["https://explorer.ritualfoundation.org"]
+              }]
+            });
+            console.log("[RNS] Add chain SUCCESS");
+            currentChainId = CHAIN_ID;
+          } catch (addErr) {
+            console.error("[RNS] addEthereumChain error:", addErr);
+            alert("Failed to add Ritual network: " + addErr.message);
+          }
+        } else if (e.code === 4001) {
+          console.log("[RNS] User rejected switch");
+        } else {
+          alert("Switch failed: " + e.message);
+        }
+      }
+
+      btn.textContent = "Switch to Ritual Testnet";
+      btn.disabled = false;
+      updateNetUI();
+
+      // If now on correct chain, re-check name
+      if (currentChainId === CHAIN_ID && currentName.length >= 3) {
+        checkName(currentName);
+      }
+    }
+
+    // ========== CONNECT ==========
+    async function doConnect() {
       if (!window.ethereum) { alert("Install MetaMask!"); return; }
 
       const btn = document.getElementById("connectBtn");
@@ -105,172 +187,90 @@
       btn.disabled = true;
 
       try {
-        // STEP 1: Force MetaMask popup with wallet_requestPermissions
-        // This guarantees MetaMask shows the account picker AND registers the site as connected
+        // Step 1: Force MetaMask popup — account picker
+        console.log("[RNS] Requesting permissions...");
         await window.ethereum.request({
           method: "wallet_requestPermissions",
           params: [{ eth_accounts: {} }]
         });
 
-        // STEP 2: Get the selected account
+        // Step 2: Get selected account
         const accs = await window.ethereum.request({ method: "eth_requestAccounts" });
         if (!accs || accs.length === 0) throw new Error("No account selected");
         account = accs[0];
+        console.log("[RNS] Connected:", account);
 
-        // STEP 3: Get current chain
-        const cid = await window.ethereum.request({ method: "eth_chainId" });
-        currentChainId = parseInt(cid, 16);
+        // Step 3: Update button
+        btn.textContent = account.slice(0, 6) + "..." + account.slice(-4) + " ✕";
+        btn.classList.add("connected");
+        btn.disabled = false;
+        btn.onclick = doDisconnect;
 
-        // STEP 4: If not on Ritual → show switch popup
+        // Step 4: Check chain
+        currentChainId = await getChainId();
+        console.log("[RNS] Chain ID:", currentChainId);
+
+        // Step 5: If not Ritual → show warning and AUTO-TRIGGER switch
         if (currentChainId !== CHAIN_ID) {
-          btn.textContent = "Switch to Ritual...";
-          btn.disabled = true;
-
-          try {
-            await window.ethereum.request({
-              method: "wallet_switchEthereumChain",
-              params: [{ chainId: CHAIN_HEX }]
-            });
-            currentChainId = CHAIN_ID;
-          } catch (switchErr) {
-            // Chain not added yet → add it
-            if (switchErr.code === 4902 || switchErr.code === -32603) {
-              try {
-                await window.ethereum.request({
-                  method: "wallet_addEthereumChain",
-                  params: [{
-                    chainId: CHAIN_HEX,
-                    chainName: "Ritual Testnet",
-                    nativeCurrency: { name: "RITUAL", symbol: "RITUAL", decimals: 18 },
-                    rpcUrls: [RPC],
-                    blockExplorerUrls: ["https://explorer.ritualfoundation.org"]
-                  }]
-                });
-                currentChainId = CHAIN_ID;
-              } catch {
-                // User rejected add — show warning
-              }
-            }
-            // User rejected switch — show warning
-          }
+          console.log("[RNS] Not on Ritual (", currentChainId, "!==", CHAIN_ID, "), showing switch popup...");
+          updateNetUI();
+          // Auto-trigger switch popup after a short delay (MetaMask needs time)
+          setTimeout(() => doSwitch(), 500);
+        } else {
+          console.log("[RNS] Already on Ritual!");
+          updateNetUI();
+          if (currentName.length >= 3) checkName(currentName);
         }
 
-        updateUI();
-        if (currentName.length >= 3) checkName(currentName);
-
       } catch (e) {
-        console.error("Connect error:", e);
+        console.error("[RNS] Connect error:", e);
         btn.textContent = "Connect MetaMask";
+        btn.classList.remove("connected");
         btn.disabled = false;
+        btn.onclick = doConnect;
       }
     }
 
-    // ============ DISCONNECT ============
-    function disconnect() {
+    function doDisconnect() {
       account = null;
       currentChainId = null;
       const btn = document.getElementById("connectBtn");
       btn.textContent = "Connect MetaMask";
       btn.classList.remove("connected");
-      btn.onclick = connect;
+      btn.onclick = doConnect;
       btn.disabled = false;
-      // Remove network warning if exists
-      const warn = document.getElementById("networkWarn");
-      if (warn) warn.remove();
+      updateNetUI();
       if (currentName.length >= 3) checkName(currentName);
     }
 
-    // ============ UPDATE UI ============
-    function updateUI() {
-      const btn = document.getElementById("connectBtn");
-      if (account) {
-        btn.textContent = account.slice(0, 6) + "..." + account.slice(-4) + " ✕";
-        btn.classList.add("connected");
-        btn.disabled = false;
-        btn.onclick = disconnect;
-        // Show network warning if needed
-        if (currentChainId !== CHAIN_ID) {
-          showNetworkWarning();
-        } else {
-          removeNetworkWarning();
-        }
-      }
-    }
-
-    function showNetworkWarning() {
-      removeNetworkWarning();
-      const btn = document.getElementById("connectBtn");
-      const warn = document.createElement("button");
-      warn.id = "networkWarn";
-      warn.className = "btn btn-switch";
-      warn.style.marginBottom = "16px";
-      warn.style.fontSize = "13px";
-      warn.style.padding = "12px";
-      warn.textContent = "⚠️ Switch to Ritual Testnet";
-      warn.onclick = async () => {
-        warn.textContent = "Switching...";
-        warn.disabled = true;
-        try {
-          await window.ethereum.request({
-            method: "wallet_switchEthereumChain",
-            params: [{ chainId: CHAIN_HEX }]
-          });
-          currentChainId = CHAIN_ID;
-          removeNetworkWarning();
-          if (currentName.length >= 3) checkName(currentName);
-        } catch (e) {
-          if (e.code === 4902 || e.code === -32603) {
-            try {
-              await window.ethereum.request({
-                method: "wallet_addEthereumChain",
-                params: [{
-                  chainId: CHAIN_HEX,
-                  chainName: "Ritual Testnet",
-                  nativeCurrency: { name: "RITUAL", symbol: "RITUAL", decimals: 18 },
-                  rpcUrls: [RPC],
-                  blockExplorerUrls: ["https://explorer.ritualfoundation.org"]
-                }]
-              });
-              currentChainId = CHAIN_ID;
-              removeNetworkWarning();
-            } catch {}
-          }
-          warn.textContent = "⚠️ Switch to Ritual Testnet";
-          warn.disabled = false;
-        }
-      };
-      btn.parentNode.insertBefore(warn, btn.nextSibling);
-    }
-
-    function removeNetworkWarning() {
-      const warn = document.getElementById("networkWarn");
-      if (warn) warn.remove();
-    }
-
-    // ============ LISTENERS ============
+    // ========== LISTENERS ==========
     if (window.ethereum) {
-      window.ethereum.on("chainChanged", (chainId) => {
+      window.ethereum.on("chainChanged", async (chainId) => {
+        console.log("[RNS] chainChanged:", chainId);
         currentChainId = parseInt(chainId, 16);
-        updateUI();
-        if (currentName.length >= 3) checkName(currentName);
+        updateNetUI();
+        if (currentChainId === CHAIN_ID && currentName.length >= 3) checkName(currentName);
       });
 
-      window.ethereum.on("accountsChanged", (accs) => {
+      window.ethereum.on("accountsChanged", async (accs) => {
+        console.log("[RNS] accountsChanged:", accs);
         if (!accs || accs.length === 0) {
-          disconnect();
+          doDisconnect();
           return;
         }
         account = accs[0];
-        // Re-check chain when account changes
-        window.ethereum.request({ method: "eth_chainId" }).then(cid => {
-          currentChainId = parseInt(cid, 16);
-          updateUI();
-          if (currentName.length >= 3) checkName(currentName);
-        });
+        const btn = document.getElementById("connectBtn");
+        btn.textContent = account.slice(0, 6) + "..." + account.slice(-4) + " ✕";
+        btn.classList.add("connected");
+        btn.disabled = false;
+        btn.onclick = doDisconnect;
+        currentChainId = await getChainId();
+        updateNetUI();
+        if (currentName.length >= 3) checkName(currentName);
       });
     }
 
-    // ============ HELPERS ============
+    // ========== HELPERS ==========
     function strToHex(s) {
       let h = "";
       for (let i = 0; i < s.length; i++) h += s.charCodeAt(i).toString(16).padStart(2, "0");
@@ -295,7 +295,7 @@
       return j.result;
     }
 
-    // ============ NAME CHECK ============
+    // ========== NAME CHECK ==========
     let timer;
     function onInput() {
       clearTimeout(timer);
@@ -358,13 +358,11 @@
       }
     }
 
-    // ============ REGISTER ============
+    // ========== REGISTER ==========
     async function doRegister() {
       if (!account || !currentName) return;
-
-      // Block if wrong network
       if (currentChainId !== CHAIN_ID) {
-        showNetworkWarning();
+        doSwitch();
         return;
       }
 
@@ -393,8 +391,25 @@
       }
     }
 
-    // ============ INIT ============
-    checkExistingConnection();
+    // ========== INIT ==========
+    (async () => {
+      if (!window.ethereum) return;
+      try {
+        const accs = await window.ethereum.request({ method: "eth_accounts" });
+        if (accs && accs.length > 0) {
+          account = accs[0];
+          currentChainId = await getChainId();
+          const btn = document.getElementById("connectBtn");
+          btn.textContent = account.slice(0, 6) + "..." + account.slice(-4) + " ✕";
+          btn.classList.add("connected");
+          btn.onclick = doDisconnect;
+          updateNetUI();
+          if (currentChainId === CHAIN_ID) {
+            document.getElementById("mainCard").style.display = "block";
+          }
+        }
+      } catch {}
+    })();
   </script>
 </body>
 </html>
