@@ -5,56 +5,82 @@
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      width: 320px;
-      background: #0a0a0f;
-      color: #e2e8f0;
+      width: 340px;
+      background: #0a1a14;
+      color: #c8e6d8;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       padding: 16px;
     }
     .header { text-align: center; margin-bottom: 16px; }
-    .header h1 { font-size: 16px; color: #a855f7; }
-    .header p { font-size: 11px; color: #666; margin-top: 4px; }
+    .header .logo { width: 40px; height: 40px; border-radius: 10px; margin-bottom: 8px; }
+    .header h1 { font-size: 16px; color: #2dd47a; }
+    .header p { font-size: 11px; color: #6b9e84; margin-top: 4px; }
     .input-group { position: relative; margin-bottom: 10px; }
     .input-group input {
       width: 100%;
       padding: 10px 60px 10px 12px;
-      background: #12121a;
-      border: 1px solid #1e1e2e;
+      background: #0f2a1f;
+      border: 1px solid #1a4a35;
       border-radius: 8px;
       color: #fff;
       font-size: 14px;
       outline: none;
     }
-    .input-group input:focus { border-color: #7c3aed; }
+    .input-group input:focus { border-color: #2dd47a; }
+    .input-group input::placeholder { color: #3d6b52; }
     .input-group .suffix {
       position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
-      color: #7c3aed; font-size: 13px; font-weight: 600;
+      color: #2dd47a; font-size: 13px; font-weight: 600;
     }
     .status {
       padding: 8px 12px; border-radius: 8px; font-size: 12px;
       margin-bottom: 10px; display: none;
     }
-    .status.success { display: block; background: #0a2e1a; color: #4ade80; }
-    .status.error { display: block; background: #2e0a0a; color: #f87171; }
-    .status.loading { display: block; background: #1a1a2e; color: #a855f7; }
-    .resolved { font-family: monospace; font-size: 11px; color: #4ade80; word-break: break-all; margin-bottom: 10px; display: none; }
+    .status.success { display: block; background: #0a2e1a; color: #4ade80; border: 1px solid #166534; }
+    .status.error { display: block; background: #2e0a0a; color: #f87171; border: 1px solid #991b1b; }
+    .status.loading { display: block; background: #0f2a1f; color: #2dd47a; border: 1px solid #1a4a35; }
+    .resolved {
+      font-family: monospace; font-size: 11px; color: #4ade80;
+      word-break: break-all; margin-bottom: 10px; display: none;
+      padding: 6px 10px; background: #0a1a14; border-radius: 6px;
+    }
     .btn {
-      width: 100%; padding: 10px; background: #7c3aed; color: #fff;
-      border: none; border-radius: 8px; font-size: 13px; font-weight: 600;
+      width: 100%; padding: 10px;
+      background: #2dd47a; color: #0a1a14;
+      border: none; border-radius: 8px;
+      font-size: 13px; font-weight: 600;
       cursor: pointer; margin-bottom: 8px;
     }
-    .btn:hover { background: #6d28d9; }
+    .btn:hover { background: #22c06a; }
     .btn:disabled { opacity: 0.4; cursor: not-allowed; }
-    .btn.secondary { background: #1e1e2e; color: #a855f7; }
+    .btn.secondary { background: #0f2a1f; color: #2dd47a; border: 1px solid #1a4a35; }
+    .btn.secondary:hover { background: #163d2b; }
     .links { text-align: center; margin-top: 12px; }
-    .links a { color: #7c3aed; font-size: 11px; text-decoration: none; }
+    .links a { color: #2dd47a; font-size: 11px; text-decoration: none; }
     .links a:hover { text-decoration: underline; }
+    .connect-banner {
+      background: #2e1a0a; border: 1px solid #f59e0b; border-radius: 8px;
+      padding: 10px; margin-bottom: 10px; text-align: center; display: none;
+    }
+    .connect-banner p { color: #fbbf24; font-size: 12px; margin-bottom: 6px; }
+    .connect-banner button {
+      width: 100%; padding: 8px;
+      background: #f59e0b; color: #0a1a14;
+      border: none; border-radius: 6px;
+      font-size: 12px; font-weight: 600; cursor: pointer;
+    }
   </style>
 </head>
 <body>
   <div class="header">
-    <h1>🔮 RNS Resolver</h1>
-    <p>Send RITUAL by name on Ritual Chain</p>
+    <img class="logo" src="https://pbs.twimg.com/profile_images/2047761933764268032/ltdZOulq_400x400.jpg" alt="RNS" />
+    <h1>RNS Resolver</h1>
+    <p>Send RITUAL by name</p>
+  </div>
+
+  <div class="connect-banner" id="connectBanner">
+    <p>Connect MetaMask to send</p>
+    <button id="connectBtn">Connect</button>
   </div>
 
   <div class="input-group">
@@ -76,6 +102,202 @@
     <a href="#" id="openMint">Register a new name →</a>
   </div>
 
-  <script src="popup.js"></script>
+  <script>
+    const RNS_CONTRACT = "0x0748176b3F44453c6E871012D41e10272abD60bC";
+    const RPC_URL = "https://rpc.ritualfoundation.org";
+    const CHAIN_ID = 1979;
+    const CHAIN_HEX = "0x787";
+    const RESOLVE_SELECTOR = "0x461a4478";
+
+    const nameInput = document.getElementById("nameInput");
+    const amountInput = document.getElementById("amountInput");
+    const status = document.getElementById("status");
+    const resolvedAddr = document.getElementById("resolvedAddr");
+    const sendBtn = document.getElementById("sendBtn");
+    const copyBtn = document.getElementById("copyBtn");
+    const connectBanner = document.getElementById("connectBanner");
+    const connectBtnEl = document.getElementById("connectBtn");
+
+    let resolvedAddress = null;
+    let account = null;
+
+    // TextEncoder hex helper
+    function toHex(str) {
+      return Array.from(new TextEncoder().encode(str)).map(b => b.toString(16).padStart(2, "0")).join("");
+    }
+
+    // Check if MetaMask available
+    async function checkWallet() {
+      if (!window.ethereum) return;
+      try {
+        const accs = await window.ethereum.request({ method: "eth_accounts" });
+        if (accs && accs.length > 0) {
+          account = accs[0];
+          connectBanner.style.display = "none";
+        } else {
+          connectBanner.style.display = "block";
+        }
+      } catch {
+        connectBanner.style.display = "block";
+      }
+    }
+
+    // Connect
+    connectBtnEl.addEventListener("click", async () => {
+      if (!window.ethereum) { alert("Install MetaMask!"); return; }
+      try {
+        await window.ethereum.request({ method: "wallet_requestPermissions", params: [{ eth_accounts: {} }] });
+        const accs = await window.ethereum.request({ method: "eth_requestAccounts" });
+        if (accs && accs.length > 0) {
+          account = accs[0];
+          connectBanner.style.display = "none";
+          // Auto switch to Ritual
+          try {
+            const cid = await window.ethereum.request({ method: "eth_chainId" });
+            if (parseInt(cid, 16) !== CHAIN_ID) {
+              try {
+                await window.ethereum.request({ method: "wallet_switchEthereumChain", params: [{ chainId: CHAIN_HEX }] });
+              } catch (e) {
+                if (e.code === 4902 || e.code === -32603) {
+                  await window.ethereum.request({
+                    method: "wallet_addEthereumChain",
+                    params: [{ chainId: CHAIN_HEX, chainName: "Ritual Testnet", nativeCurrency: { name: "RITUAL", symbol: "RITUAL", decimals: 18 }, rpcUrls: [RPC_URL], blockExplorerUrls: ["https://explorer.ritualfoundation.org"] }]
+                  });
+                }
+              }
+            }
+          } catch {}
+        }
+      } catch (e) {
+        alert("Connect failed: " + e.message);
+      }
+    });
+
+    // Resolve name
+    nameInput.addEventListener("input", () => {
+      clearTimeout(nameInput._debounce);
+      nameInput._debounce = setTimeout(() => resolveName(nameInput.value), 400);
+    });
+
+    async function resolveName(name) {
+      name = name.toLowerCase().replace(/[^a-z0-9_-]/g, "");
+      if (name.length < 3) {
+        hideStatus();
+        sendBtn.disabled = true;
+        sendBtn.textContent = "Min 3 characters";
+        return;
+      }
+
+      status.className = "status loading";
+      status.textContent = "Resolving " + name + ".ritual...";
+
+      try {
+        const nameHex = toHex(name);
+        const nameLenHex = name.length.toString(16).padStart(64, "0");
+        const nameHexPadded = nameHex.padEnd(Math.ceil(nameHex.length / 64) * 64, "0");
+        const data = RESOLVE_SELECTOR + "0000000000000000000000000000000000000000000000000000000000000020" + nameLenHex + nameHexPadded;
+
+        const res = await fetch(RPC_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "eth_call", params: [{ to: RNS_CONTRACT, data }, "latest"] }),
+        });
+        const json = await res.json();
+
+        if (json.error || json.result === "0x" + "0".repeat(64)) {
+          status.className = "status error";
+          status.textContent = "✗ " + name + ".ritual not found";
+          sendBtn.disabled = true;
+          sendBtn.textContent = "Name not registered";
+          copyBtn.style.display = "none";
+          return;
+        }
+
+        resolvedAddress = "0x" + json.result.slice(26);
+        status.className = "status success";
+        status.textContent = "✓ " + name + ".ritual";
+        resolvedAddr.textContent = resolvedAddress;
+        resolvedAddr.style.display = "block";
+        sendBtn.disabled = false;
+        sendBtn.textContent = "Send RITUAL";
+        copyBtn.style.display = "block";
+      } catch (e) {
+        status.className = "status error";
+        status.textContent = "✗ Error: " + e.message;
+        sendBtn.disabled = true;
+        sendBtn.textContent = "Error";
+      }
+    }
+
+    // Send
+    sendBtn.addEventListener("click", async () => {
+      if (!resolvedAddress) return;
+      if (!window.ethereum) { alert("Install MetaMask!"); return; }
+      if (!account) {
+        connectBanner.style.display = "block";
+        return;
+      }
+
+      try {
+        // Check chain
+        const cid = await window.ethereum.request({ method: "eth_chainId" });
+        if (parseInt(cid, 16) !== CHAIN_ID) {
+          try {
+            await window.ethereum.request({ method: "wallet_switchEthereumChain", params: [{ chainId: CHAIN_HEX }] });
+          } catch (e) {
+            if (e.code === 4902 || e.code === -32603) {
+              await window.ethereum.request({
+                method: "wallet_addEthereumChain",
+                params: [{ chainId: CHAIN_HEX, chainName: "Ritual Testnet", nativeCurrency: { name: "RITUAL", symbol: "RITUAL", decimals: 18 }, rpcUrls: [RPC_URL], blockExplorerUrls: ["https://explorer.ritualfoundation.org"] }]
+              });
+            }
+          }
+        }
+
+        const amount = amountInput.value;
+        const valueHex = amount
+          ? "0x" + BigInt(Math.floor(parseFloat(amount) * 1e18)).toString(16)
+          : "0x0";
+
+        const txHash = await window.ethereum.request({
+          method: "eth_sendTransaction",
+          params: [{ from: account, to: resolvedAddress, value: valueHex }],
+        });
+
+        sendBtn.textContent = "✓ Sent! " + txHash.slice(0, 10) + "...";
+        sendBtn.style.background = "#166534";
+        setTimeout(() => {
+          sendBtn.textContent = "Send RITUAL";
+          sendBtn.style.background = "#2dd47a";
+        }, 5000);
+      } catch (e) {
+        alert("Failed: " + e.message);
+      }
+    });
+
+    // Copy
+    copyBtn.addEventListener("click", () => {
+      navigator.clipboard.writeText(resolvedAddress);
+      copyBtn.textContent = "✓ Copied!";
+      setTimeout(() => { copyBtn.textContent = "Copy Address"; }, 2000);
+    });
+
+    // Open mint page
+    document.getElementById("openMint").addEventListener("click", (e) => {
+      e.preventDefault();
+      chrome.tabs.create({ url: "https://ritual-name-service.vercel.app" });
+    });
+
+    function hideStatus() {
+      status.className = "status";
+      status.style.display = "none";
+      resolvedAddr.style.display = "none";
+      copyBtn.style.display = "none";
+      resolvedAddress = null;
+    }
+
+    // Init
+    checkWallet();
+  </script>
 </body>
 </html>
