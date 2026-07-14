@@ -227,6 +227,29 @@
     let isSwitching = false;
     let sendResolvedAddr = null;
 
+    // ============ RPC FIX GUIDE ============
+    function showRPCFixGuide() {
+      const overlay = document.createElement("div");
+      overlay.style.cssText = "position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.8);z-index:200;display:flex;align-items:center;justify-content:center;";
+      overlay.innerHTML = `
+        <div style="background:#0f2a1f;border:2px solid #f59e0b;border-radius:16px;padding:28px;max-width:420px;width:90%;text-align:center;">
+          <div style="font-size:32px;margin-bottom:12px;">⚠️</div>
+          <div style="color:#fde68a;font-size:18px;font-weight:700;margin-bottom:8px;">RPC Error</div>
+          <div style="color:#fbbf24;font-size:13px;margin-bottom:16px;text-align:left;line-height:1.6;">
+            Your MetaMask has wrong RPC for Ritual Testnet.<br><br>
+            <strong>Fix (30 seconds):</strong><br>
+            1. Open MetaMask → ⚙️ Settings → Networks<br>
+            2. Find <strong>Ritual Testnet</strong><br>
+            3. Click 🗑️ <strong>Delete</strong><br>
+            4. Come back here and click <strong>Connect MetaMask</strong><br>
+            5. MetaMask will re-add with correct RPC ✅
+          </div>
+          <button onclick="this.parentElement.parentElement.remove()" style="width:100%;padding:14px;background:#f59e0b;color:#0a1a14;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;">Got it</button>
+        </div>
+      `;
+      document.body.appendChild(overlay);
+    }
+
     // ============ NAME CARD ============
     function showNameCard(name, addr) {
       document.getElementById("ncName").innerHTML = '<span class="green">' + name + '</span>.ritual';
@@ -266,9 +289,6 @@
 
     // ============ ENSURE RITUAL RPC IS CONFIGURED ============
     async function ensureRitualRPC() {
-      // wallet_addEthereumChain — adds chain if missing, or updates RPC if different
-      // If user already has chain 1979 with WRONG RPC, this may not update it
-      // In that case, user needs to manually update in MetaMask settings
       try {
         await window.ethereum.request({
           method: "wallet_addEthereumChain",
@@ -281,7 +301,17 @@
           }]
         });
       } catch (e) {
-        console.log("[RNS] ensureRitualRPC:", e.code || "ok");
+        console.log("[RNS] ensureRitualRPC:", e.code);
+      }
+    }
+
+    // Check if MetaMask RPC works by testing via MetaMask's provider
+    async function checkMetaMaskRPC() {
+      try {
+        const blockNum = await window.ethereum.request({ method: "eth_blockNumber", params: [] });
+        return !!blockNum;
+      } catch {
+        return false;
       }
     }
 
@@ -440,12 +470,20 @@
       const btn = document.getElementById("regBtn");
       btn.disabled = true; btn.textContent = "Preparing...";
 
-      // ALWAYS ensure RPC first — shows MetaMask popup if needed, WAITS for user to confirm
+      // Ensure chain + RPC
       await ensureRitualRPC();
       await syncChain();
 
       if (currentChainId !== CHAIN_ID) {
         btn.disabled = false; btn.textContent = "Register " + currentName + ".ritual (0.001 RITUAL)";
+        return;
+      }
+
+      // Test if MetaMask RPC actually works
+      const rpcWorks = await checkMetaMaskRPC();
+      if (!rpcWorks) {
+        btn.disabled = false; btn.textContent = "Register " + currentName + ".ritual (0.001 RITUAL)";
+        showRPCFixGuide();
         return;
       }
 
@@ -460,7 +498,11 @@
       } catch (e) {
         btn.className = "btn btn-green"; btn.disabled = false;
         btn.textContent = "Register " + currentName + ".ritual (0.001 RITUAL)";
-        alert("Failed: " + e.message);
+        if (e.message && e.message.includes("RPC")) {
+          showRPCFixGuide();
+        } else {
+          alert("Failed: " + e.message);
+        }
       }
     }
 
