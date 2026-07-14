@@ -266,9 +266,9 @@
 
     // ============ ENSURE RITUAL RPC IS CONFIGURED ============
     async function ensureRitualRPC() {
-      // Always add/update the chain — this ensures RPC URL is correct
-      // If chain already exists with correct RPC, it's a no-op
-      // If chain exists with wrong/missing RPC, it updates it
+      // wallet_addEthereumChain — adds chain if missing, or updates RPC if different
+      // If user already has chain 1979 with WRONG RPC, this may not update it
+      // In that case, user needs to manually update in MetaMask settings
       try {
         await window.ethereum.request({
           method: "wallet_addEthereumChain",
@@ -281,8 +281,22 @@
           }]
         });
       } catch (e) {
-        // If user rejects or chain is already correct, that's fine
         console.log("[RNS] ensureRitualRPC:", e.code || "ok");
+      }
+    }
+
+    // Test if RPC actually works by making a simple call
+    async function testRitualRPC() {
+      try {
+        const res = await fetch("https://rpc.ritualfoundation.org", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "eth_blockNumber", params: [] })
+        });
+        const json = await res.json();
+        return !!json.result;
+      } catch {
+        return false;
       }
     }
 
@@ -406,10 +420,17 @@
         const data = "0x1e59c529" + "0000000000000000000000000000000000000000000000000000000000000040" + addrPadded + strPart;
         const txHash = await window.ethereum.request({ method: "eth_sendTransaction", params: [{ from: account, to: CONTRACT, value: FEE, data, gas: "0x493E0" }] });
         btn.className = "btn btn-outline"; btn.textContent = "✓ Registered! TX: " + txHash.slice(0, 10) + "...";
-        // Show name card
         showNameCard(currentName, account);
         setTimeout(() => checkName(currentName), 3000);
-      } catch (e) { btn.className = "btn btn-green"; btn.disabled = false; btn.textContent = "Register " + currentName + ".ritual (0.001 RITUAL)"; alert("Failed: " + e.message); }
+      } catch (e) {
+        btn.className = "btn btn-green"; btn.disabled = false;
+        btn.textContent = "Register " + currentName + ".ritual (0.001 RITUAL)";
+        if (e.message && e.message.includes("RPC")) {
+          alert("RPC Error! Fix in MetaMask:\n\n1. Open MetaMask → Settings → Networks\n2. Find 'Ritual Testnet' (Chain 1979)\n3. Edit RPC URL to: https://rpc.ritualfoundation.org\n4. Save and try again");
+        } else {
+          alert("Failed: " + e.message);
+        }
+      }
     }
 
     // ============ SEND ============
