@@ -290,6 +290,9 @@
     // ============ ENSURE RITUAL RPC IS CONFIGURED ============
     async function ensureRitualRPC() {
       try {
+        // wallet_addEthereumChain: if chain exists with correct RPC → no-op
+        // if chain doesn't exist → adds it
+        // if chain exists with DIFFERENT RPC → MetaMask MAY update it (varies by version)
         await window.ethereum.request({
           method: "wallet_addEthereumChain",
           params: [{
@@ -302,14 +305,20 @@
         });
       } catch (e) {
         console.log("[RNS] ensureRitualRPC:", e.code);
+        // 4001 = user rejected, -32602 = chain already exists with same params
+        // Both are fine — we proceed
       }
     }
 
-    // Check if MetaMask RPC works by testing via MetaMask's provider
+    // Quick RPC test via MetaMask's provider
     async function checkMetaMaskRPC() {
       try {
-        const blockNum = await window.ethereum.request({ method: "eth_blockNumber", params: [] });
-        return !!blockNum;
+        // Try a simple call through MetaMask
+        const result = await window.ethereum.request({
+          method: "eth_blockNumber",
+          params: []
+        });
+        return !!result;
       } catch {
         return false;
       }
