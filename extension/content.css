@@ -1,0 +1,159 @@
+#rns-overlay {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  width: 340px;
+  background: #12121a;
+  border: 1px solid #1e1e2e;
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 20px rgba(124, 58, 237, 0.2);
+  z-index: 2147483647;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  color: #e2e8f0;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+#rns-overlay.collapsed {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  cursor: pointer;
+  bottom: 20px;
+  right: 20px;
+}
+
+#rns-overlay.collapsed .rns-body { display: none; }
+#rns-overlay.collapsed .rns-header { display: none; }
+#rns-overlay.collapsed .rns-fab { display: flex; }
+
+.rns-fab {
+  display: none;
+  width: 56px;
+  height: 56px;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  cursor: pointer;
+}
+
+.rns-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: #1a1a2e;
+  border-bottom: 1px solid #1e1e2e;
+}
+
+.rns-header h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #a855f7;
+}
+
+.rns-header button {
+  background: none;
+  border: none;
+  color: #666;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 4px;
+}
+
+.rns-body {
+  padding: 16px;
+}
+
+.rns-input-group {
+  position: relative;
+  margin-bottom: 12px;
+}
+
+.rns-input-group input {
+  width: 100%;
+  padding: 10px 60px 10px 12px;
+  background: #0a0a0f;
+  border: 1px solid #1e1e2e;
+  border-radius: 8px;
+  color: #fff;
+  font-size: 14px;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.rns-input-group input:focus {
+  border-color: #7c3aed;
+}
+
+.rns-input-group .rns-suffix {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #7c3aed;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.rns-status {
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  margin-bottom: 12px;
+  display: none;
+}
+
+.rns-status.success { display: block; background: #0a2e1a; color: #4ade80; border: 1px solid #166534; }
+.rns-status.error { display: block; background: #2e0a0a; color: #f87171; border: 1px solid #991b1b; }
+.rns-status.loading { display: block; background: #1a1a2e; color: #a855f7; border: 1px solid #3b1f7e; }
+
+.rns-amount-group {
+  margin-bottom: 12px;
+}
+
+.rns-amount-group input {
+  width: 100%;
+  padding: 10px 60px 10px 12px;
+  background: #0a0a0f;
+  border: 1px solid #1e1e2e;
+  border-radius: 8px;
+  color: #fff;
+  font-size: 14px;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.rns-amount-group .rns-suffix {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #666;
+  font-size: 13px;
+}
+
+.rns-btn {
+  width: 100%;
+  padding: 10px;
+  background: #7c3aed;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.rns-btn:hover { background: #6d28d9; }
+.rns-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.rns-resolved {
+  font-family: monospace;
+  font-size: 12px;
+  word-break: break-all;
+  color: #4ade80;
+  margin-top: 4px;
+}

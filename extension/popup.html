@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      width: 320px;
+      background: #0a0a0f;
+      color: #e2e8f0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      padding: 16px;
+    }
+    .header { text-align: center; margin-bottom: 16px; }
+    .header h1 { font-size: 16px; color: #a855f7; }
+    .header p { font-size: 11px; color: #666; margin-top: 4px; }
+    .input-group { position: relative; margin-bottom: 10px; }
+    .input-group input {
+      width: 100%;
+      padding: 10px 60px 10px 12px;
+      background: #12121a;
+      border: 1px solid #1e1e2e;
+      border-radius: 8px;
+      color: #fff;
+      font-size: 14px;
+      outline: none;
+    }
+    .input-group input:focus { border-color: #7c3aed; }
+    .input-group .suffix {
+      position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+      color: #7c3aed; font-size: 13px; font-weight: 600;
+    }
+    .status {
+      padding: 8px 12px; border-radius: 8px; font-size: 12px;
+      margin-bottom: 10px; display: none;
+    }
+    .status.success { display: block; background: #0a2e1a; color: #4ade80; }
+    .status.error { display: block; background: #2e0a0a; color: #f87171; }
+    .status.loading { display: block; background: #1a1a2e; color: #a855f7; }
+    .resolved { font-family: monospace; font-size: 11px; color: #4ade80; word-break: break-all; margin-bottom: 10px; display: none; }
+    .btn {
+      width: 100%; padding: 10px; background: #7c3aed; color: #fff;
+      border: none; border-radius: 8px; font-size: 13px; font-weight: 600;
+      cursor: pointer; margin-bottom: 8px;
+    }
+    .btn:hover { background: #6d28d9; }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn.secondary { background: #1e1e2e; color: #a855f7; }
+    .links { text-align: center; margin-top: 12px; }
+    .links a { color: #7c3aed; font-size: 11px; text-decoration: none; }
+    .links a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>🔮 RNS Resolver</h1>
+    <p>Send RITUAL by name on Ritual Chain</p>
+  </div>
+
+  <div class="input-group">
+    <input type="text" id="nameInput" placeholder="Enter name..." autocomplete="off" spellcheck="false" />
+    <span class="suffix">.ritual</span>
+  </div>
+
+  <div class="input-group">
+    <input type="number" id="amountInput" placeholder="Amount (RITUAL)" step="0.001" min="0" />
+  </div>
+
+  <div class="status" id="status"></div>
+  <div class="resolved" id="resolvedAddr"></div>
+
+  <button class="btn" id="sendBtn" disabled>Resolve a name first</button>
+  <button class="btn secondary" id="copyBtn" style="display:none;">Copy Address</button>
+
+  <div class="links">
+    <a href="#" id="openMint">Register a new name →</a>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
