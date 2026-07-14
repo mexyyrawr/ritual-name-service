@@ -375,6 +375,28 @@
     setInterval(async () => { if (account) { await syncChain(); updateUI(); } }, 5000);
     document.addEventListener("visibilitychange", async () => { if (!document.hidden && account) { await syncChain(); updateUI(); } });
 
+    // ============ SEND TX WITH RETRY ============
+    async function sendTxWithRetry(txParams, maxRetries = 3) {
+      for (let i = 0; i < maxRetries; i++) {
+        try {
+          return await window.ethereum.request({ method: "eth_sendTransaction", params: [txParams] });
+        } catch (e) {
+          if (e.message && e.message.includes("RPC") && i < maxRetries - 1) {
+            console.log("[RNS] RPC error, retrying in 3s... (" + (i + 1) + "/" + maxRetries + ")");
+            // Update button to show retry status
+            const regBtn = document.getElementById("regBtn");
+            const sendBtn = document.getElementById("sendBtn");
+            if (regBtn && !regBtn.disabled) regBtn.textContent = "RPC error, retrying... (" + (i + 1) + "/" + maxRetries + ")";
+            if (sendBtn && !sendBtn.disabled) sendBtn.textContent = "RPC error, retrying... (" + (i + 1) + "/" + maxRetries + ")";
+            await new Promise(r => setTimeout(r, 3000));
+            await ensureRitualRPC();
+            continue;
+          }
+          throw e;
+        }
+      }
+    }
+
     // ============ HELPERS ============
     function strToHex(s) { let h = ""; for (let i = 0; i < s.length; i++) h += s.charCodeAt(i).toString(16).padStart(2, "0"); return h; }
     function encStr(s) { const hex = strToHex(s); const len = s.length.toString(16).padStart(64, "0"); return len + hex.padEnd(Math.ceil(hex.length / 64) * 64, "0"); }
@@ -431,18 +453,14 @@
       try {
         const strPart = encStr(currentName); const addrPadded = account.slice(2).toLowerCase().padStart(64, "0");
         const data = "0x1e59c529" + "0000000000000000000000000000000000000000000000000000000000000040" + addrPadded + strPart;
-        const txHash = await window.ethereum.request({ method: "eth_sendTransaction", params: [{ from: account, to: CONTRACT, value: FEE, data, gas: "0x493E0" }] });
+        const txHash = await sendTxWithRetry({ from: account, to: CONTRACT, value: FEE, data, gas: "0x493E0" });
         btn.className = "btn btn-outline"; btn.textContent = "✓ Registered! TX: " + txHash.slice(0, 10) + "...";
         showNameCard(currentName, account);
         setTimeout(() => checkName(currentName), 3000);
       } catch (e) {
         btn.className = "btn btn-green"; btn.disabled = false;
         btn.textContent = "Register " + currentName + ".ritual (0.001 RITUAL)";
-        if (e.message && e.message.includes("RPC")) {
-          alert("RPC Error! Fix in MetaMask:\n\n1. Open MetaMask → Settings → Networks\n2. Find 'Ritual Testnet' (Chain 1979)\n3. Edit RPC URL to: https://rpc.ritualfoundation.org\n4. Save and try again");
-        } else {
-          alert("Failed: " + e.message);
-        }
+        alert("Failed: " + e.message);
       }
     }
 
@@ -517,20 +535,13 @@
       btn.textContent = "Sending...";
       try {
         const valueHex = "0x" + BigInt(Math.floor(parseFloat(amount) * 1e18)).toString(16);
-        const txHash = await window.ethereum.request({
-          method: "eth_sendTransaction",
-          params: [{ from: account, to: sendResolvedAddr, value: valueHex }]
-        });
+        const txHash = await sendTxWithRetry({ from: account, to: sendResolvedAddr, value: valueHex });
         btn.className = "btn btn-outline";
         btn.textContent = "✓ Sent! TX: " + txHash.slice(0, 10) + "...";
         setTimeout(() => { btn.textContent = "Send RITUAL"; btn.className = "btn btn-green"; btn.disabled = false; }, 5000);
       } catch (e) {
         btn.className = "btn btn-green"; btn.disabled = false; btn.textContent = "Send RITUAL";
-        if (e.message && e.message.includes("RPC")) {
-          alert("RPC Error! Fix in MetaMask:\n\n1. Open MetaMask → Settings → Networks\n2. Find 'Ritual Testnet' (Chain 1979)\n3. Edit RPC URL to: https://rpc.ritualfoundation.org\n4. Save and try again");
-        } else {
-          alert("Failed: " + e.message);
-        }
+        alert("Failed: " + e.message);
       }
     }
 
