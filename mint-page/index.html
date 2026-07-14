@@ -4,38 +4,115 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>RNS — Ritual Name Service</title>
+  <link rel="icon" href="https://pbs.twimg.com/profile_images/2047761933764268032/ltdZOulq_400x400.jpg" />
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { background: #0a0a0f; color: #e2e8f0; font-family: system-ui, sans-serif; min-height: 100vh; }
+    body {
+      background: #0a1a14;
+      color: #c8e6d8;
+      font-family: system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+    }
     .wrap { max-width: 560px; margin: 0 auto; padding: 40px 20px; }
+
+    /* Header */
     .header { text-align: center; margin-bottom: 32px; }
-    .header h1 { font-size: 28px; color: #fff; margin-bottom: 8px; }
-    .header p { color: #666; font-size: 15px; }
-    .card { background: #12121a; border: 1px solid #1e1e2e; border-radius: 14px; padding: 24px; margin-bottom: 20px; }
-    .input-row { display: flex; align-items: center; background: #0a0a0f; border: 1px solid #1e1e2e; border-radius: 10px; overflow: hidden; margin-bottom: 16px; }
-    .input-row input { flex: 1; padding: 14px 16px; background: transparent; border: none; color: #fff; font-size: 16px; outline: none; }
-    .input-row input::placeholder { color: #555; }
-    .input-row .suffix { padding-right: 16px; color: #7c3aed; font-weight: 700; font-size: 15px; white-space: nowrap; }
-    #status { padding: 14px; border-radius: 10px; font-size: 14px; display: none; margin-bottom: 12px; }
+    .header .logo {
+      width: 56px; height: 56px; border-radius: 14px;
+      margin-bottom: 12px;
+    }
+    .header h1 { font-size: 26px; color: #fff; margin-bottom: 6px; font-weight: 700; }
+    .header p { color: #6b9e84; font-size: 14px; }
+
+    /* Card */
+    .card {
+      background: #0f2a1f;
+      border: 1px solid #1a4a35;
+      border-radius: 14px;
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+
+    /* Input */
+    .input-row {
+      display: flex; align-items: center;
+      background: #0a1a14;
+      border: 1px solid #1a4a35;
+      border-radius: 10px;
+      overflow: hidden;
+      margin-bottom: 16px;
+      transition: border-color .2s;
+    }
+    .input-row:focus-within { border-color: #2dd47a; }
+    .input-row input {
+      flex: 1; padding: 14px 16px;
+      background: transparent; border: none;
+      color: #fff; font-size: 16px; outline: none;
+    }
+    .input-row input::placeholder { color: #3d6b52; }
+    .input-row .suffix {
+      padding-right: 16px;
+      color: #2dd47a; font-weight: 700; font-size: 15px;
+      white-space: nowrap;
+    }
+
+    /* Status */
+    #status {
+      padding: 14px; border-radius: 10px;
+      font-size: 14px; display: none; margin-bottom: 12px;
+    }
     .ok { display: block; background: #0a2e1a; color: #4ade80; border: 1px solid #166534; }
     .err { display: block; background: #2e0a0a; color: #f87171; border: 1px solid #991b1b; }
-    .wait { display: block; background: #1a1a2e; color: #a855f7; border: 1px solid #3b1f7e; }
-    #ownerInfo { font-size: 12px; color: #888; margin-top: 6px; font-family: monospace; }
-    .btn { width: 100%; padding: 14px; border: none; border-radius: 10px; font-size: 15px; font-weight: 700; cursor: pointer; transition: all .2s; }
-    .btn-purple { background: #7c3aed; color: #fff; }
-    .btn-purple:hover { background: #6d28d9; }
-    .btn-purple:disabled { opacity: .4; cursor: not-allowed; }
-    .btn-green { background: #166534; color: #4ade80; }
-    .connect-btn { padding: 10px 20px; background: #7c3aed; color: #fff; border: none; border-radius: 8px; font-size: 13px; cursor: pointer; margin-bottom: 20px; display: block; width: 100%; }
-    .connect-btn.connected { background: #1e1e2e; border: 1px solid #333; color: #4ade80; }
-    .footer { text-align: center; color: #444; font-size: 12px; margin-top: 32px; }
-    .footer a { color: #7c3aed; text-decoration: none; }
+    .wait { display: block; background: #0f2a1f; color: #2dd47a; border: 1px solid #1a4a35; }
+    #ownerInfo { font-size: 12px; color: #6b9e84; margin-top: 6px; font-family: monospace; }
+
+    /* Buttons */
+    .btn {
+      width: 100%; padding: 14px; border: none; border-radius: 10px;
+      font-size: 15px; font-weight: 700; cursor: pointer;
+      transition: all .2s;
+    }
+    .btn-green { background: #2dd47a; color: #0a1a14; }
+    .btn-green:hover { background: #22c06a; }
+    .btn-green:disabled { opacity: .4; cursor: not-allowed; }
+    .btn-outline { background: transparent; color: #4ade80; border: 1px solid #166534; }
+    .btn-outline:hover { background: #0a2e1a; }
+
+    /* Connect button */
+    .connect-btn {
+      padding: 10px 20px;
+      background: #2dd47a; color: #0a1a14;
+      border: none; border-radius: 8px;
+      font-size: 13px; font-weight: 600;
+      cursor: pointer; margin-bottom: 20px;
+      display: block; width: 100%;
+      transition: background .2s;
+    }
+    .connect-btn:hover { background: #22c06a; }
+    .connect-btn.connected {
+      background: #0f2a1f;
+      border: 1px solid #1a4a35;
+      color: #4ade80;
+    }
+    .connect-btn.connected:hover { background: #163d2b; }
+
+    /* Footer */
+    .footer { text-align: center; color: #2d5a42; font-size: 12px; margin-top: 32px; }
+    .footer a { color: #2dd47a; text-decoration: none; }
+    .footer a:hover { text-decoration: underline; }
+
+    /* Fee label */
+    .fee-label {
+      text-align: center; font-size: 12px; color: #3d6b52;
+      margin-bottom: 16px;
+    }
   </style>
 </head>
 <body>
   <div class="wrap">
     <div class="header">
-      <h1>🔮 Ritual Name Service</h1>
+      <img class="logo" src="https://pbs.twimg.com/profile_images/2047761933764268032/ltdZOulq_400x400.jpg" alt="Ritual" />
+      <h1>Ritual Name Service</h1>
       <p>Register a .ritual name for your wallet</p>
     </div>
 
@@ -48,7 +125,8 @@
       </div>
       <div id="status"></div>
       <div id="ownerInfo"></div>
-      <button class="btn btn-purple" id="actionBtn" style="display:none;" onclick="doRegister()"></button>
+      <div class="fee-label">Registration fee: 0.001 RITUAL</div>
+      <button class="btn btn-green" id="actionBtn" style="display:none;" onclick="doRegister()"></button>
     </div>
 
     <div class="footer">
@@ -60,19 +138,17 @@
     const CONTRACT = "0x0748176b3F44453c6E871012D41e10272abD60bC";
     const RPC = "https://rpc.ritualfoundation.org";
     const CHAIN_ID = 1979;
-    const FEE = "0x2386F26FC10000"; // 0.01 ETH in hex
+    const FEE = "0x38D7EA4C68000"; // 0.001 ETH in hex
 
     let account = null;
     let currentName = "";
 
-    // Helper: string to hex bytes
     function strToHex(s) {
       let h = "";
       for (let i = 0; i < s.length; i++) h += s.charCodeAt(i).toString(16).padStart(2, "0");
       return h;
     }
 
-    // Helper: encode string param for ABI
     function encStr(s) {
       const hex = strToHex(s);
       const len = s.length.toString(16).padStart(64, "0");
@@ -80,7 +156,6 @@
       return len + data;
     }
 
-    // Helper: RPC call
     async function rpcCall(to, data) {
       const r = await fetch(RPC, {
         method: "POST",
@@ -92,11 +167,9 @@
       return j.result;
     }
 
-    // Connect wallet
     async function connect() {
       if (!window.ethereum) { alert("Install MetaMask!"); return; }
       try {
-        // Force MetaMask to show account picker
         try {
           await window.ethereum.request({
             method: "wallet_requestPermissions",
@@ -106,7 +179,6 @@
         const accs = await window.ethereum.request({ method: "eth_requestAccounts" });
         account = accs[0];
 
-        // Switch to Ritual Chain
         const cid = await window.ethereum.request({ method: "eth_chainId" });
         if (parseInt(cid, 16) !== CHAIN_ID) {
           try {
@@ -120,8 +192,6 @@
         }
 
         updateConnectBtn();
-
-        // Re-check if name was already typed
         if (currentName.length >= 3) checkName(currentName);
       } catch (e) {
         alert("Connect failed: " + e.message);
@@ -143,7 +213,6 @@
       btn.onclick = disconnect;
     }
 
-    // On input
     let timer;
     function onInput() {
       clearTimeout(timer);
@@ -158,7 +227,6 @@
       timer = setTimeout(() => checkName(currentName), 300);
     }
 
-    // Check name availability
     async function checkName(name) {
       const status = document.getElementById("status");
       const owner = document.getElementById("ownerInfo");
@@ -171,31 +239,27 @@
       btn.style.display = "none";
 
       try {
-        // isAvailable(string) = 0x965306aa
         const data = "0x965306aa" + "0000000000000000000000000000000000000000000000000000000000000020" + encStr(name);
         const result = await rpcCall(CONTRACT, data);
-
         const available = result && result.endsWith("1");
 
         if (available) {
           status.className = "ok";
           status.textContent = "✓ " + name + ".ritual is available!";
           if (account) {
-            btn.textContent = "Register " + name + ".ritual (0.01 RITUAL)";
+            btn.textContent = "Register " + name + ".ritual (0.001 RITUAL)";
             btn.style.display = "block";
             btn.disabled = false;
-            btn.className = "btn btn-purple";
+            btn.className = "btn btn-green";
           } else {
             btn.textContent = "Connect wallet to register";
             btn.style.display = "block";
             btn.disabled = true;
-            btn.className = "btn btn-purple";
+            btn.className = "btn btn-green";
           }
         } else {
           status.className = "err";
           status.textContent = "✗ " + name + ".ritual is taken";
-
-          // Get owner info
           try {
             const recData = "0x11dd8845" + "0000000000000000000000000000000000000000000000000000000000000020" + encStr(name);
             const recResult = await rpcCall(CONTRACT, recData);
@@ -211,7 +275,6 @@
       }
     }
 
-    // Register name
     async function doRegister() {
       if (!account || !currentName) return;
 
@@ -220,7 +283,6 @@
       btn.textContent = "Confirming...";
 
       try {
-        // register(string,address) = 0x1e59c529
         const strPart = encStr(currentName);
         const addrPadded = account.slice(2).toLowerCase().padStart(64, "0");
         const data = "0x1e59c529" + "0000000000000000000000000000000000000000000000000000000000000040" + addrPadded + strPart;
@@ -230,15 +292,13 @@
           params: [{ from: account, to: CONTRACT, value: FEE, data }]
         });
 
-        btn.className = "btn btn-green";
+        btn.className = "btn btn-outline";
         btn.textContent = "✓ Registered! TX: " + txHash.slice(0, 10) + "...";
-
-        // Re-check after a delay
         setTimeout(() => checkName(currentName), 3000);
       } catch (e) {
-        btn.className = "btn btn-purple";
+        btn.className = "btn btn-green";
         btn.disabled = false;
-        btn.textContent = "Register " + currentName + ".ritual (0.01 RITUAL)";
+        btn.textContent = "Register " + currentName + ".ritual (0.001 RITUAL)";
         alert("Failed: " + e.message);
       }
     }
