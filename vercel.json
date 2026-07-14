@@ -1,7 +1,5 @@
 {
-  "installCommand": "cd frontend && npm install --legacy-peer-deps",
-  "buildCommand": "cd frontend && npm run build",
-  "outputDirectory": "frontend/.next",
-  "framework": "nextjs",
-  "regions": ["sin1"]
+  "buildCommand": "echo 'static site'",
+  "outputDirectory": "mint-page",
+  "framework": null
 }
