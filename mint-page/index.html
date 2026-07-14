@@ -255,6 +255,17 @@
       debounce = setTimeout(() => checkName(nameInput.value), 400);
     });
 
+    function toHex(str) {
+      return Array.from(new TextEncoder().encode(str)).map(b => b.toString(16).padStart(2, "0")).join("");
+    }
+
+    function encodeString(str) {
+      const hex = toHex(str);
+      const lenHex = str.length.toString(16).padStart(64, "0");
+      const padded = hex.padEnd(Math.ceil(hex.length / 64) * 64, "0");
+      return { lenHex, padded };
+    }
+
     async function checkName(name) {
       name = name.toLowerCase().replace(/[^a-z0-9_-]/g, "");
       if (name.length < 3) {
@@ -268,7 +279,7 @@
 
       try {
         // isAvailable(string) = 0x965306aa
-        const nameHex = Buffer.from(name).toString("hex");
+        const nameHex = toHex(name);
         const padded = nameHex.padEnd(Math.ceil(nameHex.length / 64) * 64, "0");
         const lenHex = name.length.toString(16).padStart(64, "0");
         const data = "0x965306aa" + "0000000000000000000000000000000000000000000000000000000000000020" + lenHex + padded;
