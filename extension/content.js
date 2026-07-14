@@ -7,8 +7,8 @@
   const CHAIN_ID = 1979;
 
   // RNS ABI fragments we need
-  const RESOLVE_SELECTOR = "0x59d1d43c"; // resolve(string)
-  const IS_AVAILABLE_SELECTOR = "0x983b2d56"; // isAvailable(string)
+  const RESOLVE_SELECTOR = "0x461a4478"; // resolve(string)
+  const IS_AVAILABLE_SELECTOR = "0x965306aa"; // isAvailable(string)
 
   // Don't inject on MetaMask extension pages
   if (location.href.startsWith("chrome-extension://")) return;

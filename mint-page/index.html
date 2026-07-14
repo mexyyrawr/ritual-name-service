@@ -267,11 +267,11 @@
       result.textContent = "Checking " + name + ".ritual...";
 
       try {
-        // isAvailable(string) = 0x983b2d56
+        // isAvailable(string) = 0x965306aa
         const nameHex = Buffer.from(name).toString("hex");
         const padded = nameHex.padEnd(Math.ceil(nameHex.length / 64) * 64, "0");
         const lenHex = name.length.toString(16).padStart(64, "0");
-        const data = "0x983b2d56" + "0000000000000000000000000000000000000000000000000000000000000020" + lenHex + padded;
+        const data = "0x965306aa" + "0000000000000000000000000000000000000000000000000000000000000020" + lenHex + padded;
 
         const res = await fetch(RPC_URL, {
           method: "POST",
@@ -334,7 +334,7 @@
 
       // register(string,address) = 0x985c0e26
       // string offset = 0x20, address at 0x40, string length, string data, address padded
-      const data = "0x985c0e26" +
+      const data = "0x1e59c529" +
         "0000000000000000000000000000000000000000000000000000000000000040" + // offset to string
         "000000000000000000000000" + userAddress.slice(2).toLowerCase() + // address
         lenHex + padded; // string

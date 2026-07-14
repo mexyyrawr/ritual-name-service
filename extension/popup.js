@@ -1,7 +1,7 @@
 const RNS_CONTRACT = "0x9f138b859e517A8f441E6A62e72183192B32d10e";
 const RPC_URL = "https://rpc.ritualfoundation.org";
 const CHAIN_ID = 1979;
-const RESOLVE_SELECTOR = "0x59d1d43c";
+const RESOLVE_SELECTOR = "0x461a4478";
 
 const nameInput = document.getElementById("nameInput");
 const amountInput = document.getElementById("amountInput");
