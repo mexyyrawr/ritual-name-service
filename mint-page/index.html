@@ -299,8 +299,9 @@
           }
         } else {
           // Get record
+          const recEnc = encodeString(name);
           const recData = "0x" + "11dd8845" + // getRecord(string) selector
-            "0000000000000000000000000000000000000000000000000000000000000020" + lenHex + padded;
+            "0000000000000000000000000000000000000000000000000000000000000020" + recEnc.lenHex + recEnc.padded;
           const recRes = await fetch(RPC_URL, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -328,9 +329,7 @@
     async function registerName(name) {
       if (!window.ethereum || !userAddress) return;
 
-      const nameHex = Buffer.from(name).toString("hex");
-      const padded = nameHex.padEnd(Math.ceil(nameHex.length / 64) * 64, "0");
-      const lenHex = name.length.toString(16).padStart(64, "0");
+      const { lenHex, padded } = encodeString(name);
 
       // register(string,address) = 0x985c0e26
       // string offset = 0x20, address at 0x40, string length, string data, address padded
@@ -357,19 +356,7 @@
       }
     }
 
-    // Buffer polyfill
-    if (typeof Buffer === "undefined") {
-      window.Buffer = {
-        from(str) {
-          return {
-            toString(enc) {
-              if (enc === "hex") return Array.from(new TextEncoder().encode(str)).map(b => b.toString(16).padStart(2, "0")).join("");
-              return str;
-            }
-          };
-        }
-      };
-    }
+
   </script>
 </body>
 </html>
