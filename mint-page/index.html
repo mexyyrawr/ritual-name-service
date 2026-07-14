@@ -498,7 +498,9 @@
         const strPart = encStr(currentName); const addrPadded = account.slice(2).toLowerCase().padStart(64, "0");
         const data = "0x1e59c529" + "0000000000000000000000000000000000000000000000000000000000000040" + addrPadded + strPart;
         const txHash = await sendTxWithRetry({ from: account, to: CONTRACT, value: FEE, data, gas: "0x493E0" });
-        btn.className = "btn btn-outline"; btn.textContent = "✓ Registered! TX: " + txHash.slice(0, 10) + "...";
+        btn.className = "btn btn-outline";
+        btn.innerHTML = "✓ Registered! <a href='https://explorer.ritualfoundation.org/tx/" + txHash + "' target='_blank' style='color:#2dd47a;text-decoration:underline;font-size:12px;'>" + txHash.slice(0, 10) + "...</a>";
+        btn.onclick = () => window.open("https://explorer.ritualfoundation.org/tx/" + txHash, "_blank");
         showNameCard(currentName, account);
         setTimeout(() => checkName(currentName), 3000);
       } catch (e) {
@@ -568,8 +570,6 @@
       const btn = document.getElementById("sendBtn");
       btn.disabled = true; btn.textContent = "Preparing...";
 
-      // Ensure RPC first
-      await ensureRitualRPC();
       await syncChain();
 
       if (currentChainId !== CHAIN_ID) {
@@ -585,8 +585,9 @@
         const valueHex = "0x" + BigInt(Math.floor(parseFloat(amount) * 1e18)).toString(16);
         const txHash = await sendTxWithRetry({ from: account, to: sendResolvedAddr, value: valueHex });
         btn.className = "btn btn-outline";
-        btn.textContent = "✓ Sent! TX: " + txHash.slice(0, 10) + "...";
-        setTimeout(() => { btn.textContent = "Send RITUAL"; btn.className = "btn btn-green"; btn.disabled = false; }, 5000);
+        btn.innerHTML = "✓ Sent! <a href='https://explorer.ritualfoundation.org/tx/" + txHash + "' target='_blank' style='color:#2dd47a;text-decoration:underline;font-size:12px;'>" + txHash.slice(0, 10) + "...</a>";
+        btn.disabled = false;
+        btn.onclick = () => window.open("https://explorer.ritualfoundation.org/tx/" + txHash, "_blank");
       } catch (e) {
         btn.className = "btn btn-green"; btn.disabled = false; btn.textContent = "Send RITUAL";
         alert("Failed: " + e.message);
