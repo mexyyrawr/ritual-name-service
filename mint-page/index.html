@@ -180,16 +180,34 @@
       }
     }
 
-    // Switch to Ritual network
+    // Switch to Ritual network — forces MetaMask popup
     async function switchToRitual() {
-      if (!window.ethereum) return;
+      if (!window.ethereum) return false;
       try {
-        await window.ethereum.request({ method: "wallet_switchEthereumChain", params: [{ chainId: "0x787" }] });
-      } catch {
         await window.ethereum.request({
-          method: "wallet_addEthereumChain",
-          params: [{ chainId: "0x787", chainName: "Ritual", nativeCurrency: { name: "RITUAL", symbol: "RITUAL", decimals: 18 }, rpcUrls: [RPC], blockExplorerUrls: ["https://explorer.ritualfoundation.org"] }]
+          method: "wallet_switchEthereumChain",
+          params: [{ chainId: "0x787" }]
         });
+        return true;
+      } catch (e) {
+        // If chain not added yet, add it first
+        if (e.code === 4902) {
+          try {
+            await window.ethereum.request({
+              method: "wallet_addEthereumChain",
+              params: [{
+                chainId: "0x787",
+                chainName: "Ritual",
+                nativeCurrency: { name: "RITUAL", symbol: "RITUAL", decimals: 18 },
+                rpcUrls: [RPC],
+                blockExplorerUrls: ["https://explorer.ritualfoundation.org"]
+              }]
+            });
+            return true;
+          } catch { return false; }
+        }
+        // User rejected — still return false, banner will show
+        return false;
       }
     }
 
@@ -238,25 +256,24 @@
     async function connect() {
       if (!window.ethereum) { alert("Install MetaMask!"); return; }
       try {
-        try {
-          await window.ethereum.request({
-            method: "wallet_requestPermissions",
-            params: [{ eth_accounts: {} }]
-          });
-        } catch {}
+        // Request accounts first
         const accs = await window.ethereum.request({ method: "eth_requestAccounts" });
         account = accs[0];
 
+        // Always try to switch to Ritual immediately
         const cid = await window.ethereum.request({ method: "eth_chainId" });
         currentChainId = parseInt(cid, 16);
-        if (currentChainId !== CHAIN_ID) {
-          await switchToRitual();
-          // Re-read chain after switch attempt
-          const newCid = await window.ethereum.request({ method: "eth_chainId" });
-          currentChainId = parseInt(newCid, 16);
-        }
-        checkNetwork();
 
+        if (currentChainId !== CHAIN_ID) {
+          // Force switch popup immediately
+          const switched = await switchToRitual();
+          if (switched) {
+            const newCid = await window.ethereum.request({ method: "eth_chainId" });
+            currentChainId = parseInt(newCid, 16);
+          }
+        }
+
+        checkNetwork();
         updateConnectBtn();
         if (currentName.length >= 3) checkName(currentName);
       } catch (e) {
@@ -345,9 +362,23 @@
 
     async function doRegister() {
       if (!account || !currentName) return;
+
+      // Check chain — if wrong, force switch
       if (currentChainId !== CHAIN_ID) {
-        await switchToRitual();
-        return;
+        const btn = document.getElementById("actionBtn");
+        btn.disabled = true;
+        btn.textContent = "Switching to Ritual...";
+        const switched = await switchToRitual();
+        if (switched) {
+          const newCid = await window.ethereum.request({ method: "eth_chainId" });
+          currentChainId = parseInt(newCid, 16);
+          checkNetwork();
+        }
+        if (currentChainId !== CHAIN_ID) {
+          btn.disabled = false;
+          btn.textContent = "Register " + currentName + ".ritual (0.001 RITUAL)";
+          return;
+        }
       }
 
       const btn = document.getElementById("actionBtn");
