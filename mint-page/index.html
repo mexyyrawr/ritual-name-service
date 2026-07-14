@@ -253,7 +253,7 @@
     // ============ NAME CARD ============
     function showNameCard(name, addr) {
       document.getElementById("ncName").innerHTML = '<span class="green">' + name + '</span>.ritual';
-      document.getElementById("ncAddress").textContent = addr;
+      document.getElementById("ncAddress").textContent = addr.slice(0, 6) + "..." + addr.slice(-4);
       const tweetText = encodeURIComponent("just registered " + name + ".ritual on @ritualnet 🟢\n\nsend me $RITUAL by name: " + name + ".ritual\n\nhttps://ritual-name-service.vercel.app");
       document.getElementById("ncShareX").href = "https://x.com/intent/post?text=" + tweetText;
       document.getElementById("nameCardOverlay").classList.add("show");
@@ -343,18 +343,16 @@
       if (isSwitching) return;
       isSwitching = true;
       const btn = document.getElementById("connectBtn");
-      btn.textContent = "Check MetaMask...";
+      btn.textContent = "Switching to Ritual...";
       btn.classList.add("waiting");
 
-      // First: always ensure RPC is configured
-      await ensureRitualRPC();
-
       try {
+        // Just switch — don't add chain first (avoids double popup)
         await window.ethereum.request({ method: "wallet_switchEthereumChain", params: [{ chainId: CHAIN_HEX }] });
         currentChainId = CHAIN_ID;
       } catch (e) {
-        if (e.code === 4902 || e.code === -32603) {
-          // Chain not added — add it (shouldn't happen after ensureRitualRPC but just in case)
+        if (e.code === 4902) {
+          // Chain not in MetaMask — add it first, then switch
           try {
             await window.ethereum.request({
               method: "wallet_addEthereumChain",
@@ -396,9 +394,8 @@
         if (!accs || accs.length === 0) throw new Error("No account");
         account = accs[0];
         await syncChain(); updateUI();
-        // Always ensure RPC is configured (fixes missing RPC error)
-        await ensureRitualRPC();
-        if (currentChainId !== CHAIN_ID) setTimeout(() => forceRitualSwitch(), 1000);
+        // Switch to Ritual if not already there
+        if (currentChainId !== CHAIN_ID) setTimeout(() => forceRitualSwitch(), 500);
       } catch (e) {
         btn.textContent = "Connect MetaMask"; btn.classList.remove("connected", "waiting"); btn.disabled = false; btn.onclick = doConnect;
       }
@@ -467,7 +464,7 @@
           else { btn.textContent = "Connect wallet to register"; btn.style.display = "block"; btn.disabled = true; btn.className = "btn btn-green"; }
         } else {
           status.className = "err"; status.textContent = "✗ " + name + ".ritual is taken";
-          try { const recData = "0x11dd8845" + "0000000000000000000000000000000000000000000000000000000000000020" + encStr(name); const recResult = await rpcCall(CONTRACT, recData); if (recResult && recResult.length >= 66) owner.textContent = "Owner: 0x" + recResult.slice(26, 66); } catch {}
+          try { const recData = "0x11dd8845" + "0000000000000000000000000000000000000000000000000000000000000020" + encStr(name); const recResult = await rpcCall(CONTRACT, recData); if (recResult && recResult.length >= 66) { const fullAddr = "0x" + recResult.slice(26, 66); owner.textContent = "Owner: " + fullAddr.slice(0, 6) + "..." + fullAddr.slice(-4); } } catch {}
         }
       } catch (e) { status.className = "err"; status.textContent = "Error: " + e.message; }
     }
@@ -550,7 +547,7 @@
 
         sendResolvedAddr = "0x" + result.slice(26);
         status.className = "ok"; status.textContent = "✓ " + name + ".ritual";
-        addrEl.textContent = "→ " + sendResolvedAddr;
+        addrEl.textContent = "→ " + sendResolvedAddr.slice(0, 6) + "..." + sendResolvedAddr.slice(-4);
         addrEl.style.display = "block";
 
         if (account) {
