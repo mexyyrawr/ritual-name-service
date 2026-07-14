@@ -96,6 +96,13 @@
     async function connect() {
       if (!window.ethereum) { alert("Install MetaMask!"); return; }
       try {
+        // Force MetaMask to show account picker
+        try {
+          await window.ethereum.request({
+            method: "wallet_requestPermissions",
+            params: [{ eth_accounts: {} }]
+          });
+        } catch {}
         const accs = await window.ethereum.request({ method: "eth_requestAccounts" });
         account = accs[0];
 
